@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Agentic AI Signal Scan — KMV Platform Rails</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --teal:#0D5C4E;--teal-l:#E8F3F1;--teal-m:#1a7a68;
+  --amber:#C47A1A;--amber-l:#FBF3E8;
+  --red:#8B1A1A;--red-l:#F9ECEC;
+  --blue:#1A3C5C;--blue-l:#E8EEF4;
+  --forest:#2D6A4F;--forest-l:#E8F2ED;
+  --ink:#111;--mid:#555;--rule:#DDD;--bg:#FAFAF8;--white:#FFF;
+  --now:32px;
+  --badge-r:3px;
+}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);font-size:10px;line-height:1.6}
+
+/* ─── HEADER ─── */
+.header{background:var(--teal);color:#fff;padding:28px 36px 22px;position:relative;overflow:hidden}
+.header::after{content:'';position:absolute;right:-60px;top:-60px;width:280px;height:280px;border-radius:50%;background:rgba(255,255,255,0.04)}
+.header .doc-type{font-size:8px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;opacity:.6;margin-bottom:6px}
+.header h1{font-size:22px;font-weight:800;line-height:1.15;letter-spacing:-.3px;max-width:600px}
+.header .sub{font-size:10.5px;opacity:.75;margin-top:6px;max-width:520px}
+.header .meta-row{display:flex;gap:16px;margin-top:16px;flex-wrap:wrap}
+.header .meta-row span{font-size:8px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;background:rgba(255,255,255,.12);padding:4px 10px;border-radius:20px}
+
+/* ─── EXEC SUMMARY ─── */
+.exec{background:var(--ink);color:#fff;padding:20px 36px}
+.exec h2{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;opacity:.5;margin-bottom:12px}
+.exec-bullets{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.exec-bullet{background:rgba(255,255,255,.07);border-left:3px solid var(--teal-m);padding:12px 14px;border-radius:0 4px 4px 0}
+.exec-bullet .n{font-size:18px;font-weight:800;color:var(--teal-m);line-height:1}
+.exec-bullet .d{font-size:8.5px;opacity:.75;margin-top:3px;line-height:1.45}
+
+/* ─── BODY ─── */
+.body{padding:28px 36px;max-width:1100px}
+
+/* ─── SECTION ─── */
+.section{margin-bottom:36px}
+.section-header{display:flex;align-items:center;gap:10px;margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid var(--teal)}
+.section-icon{font-size:20px}
+.section-title{font-size:15px;font-weight:800;color:var(--teal)}
+.section-sub{font-size:8.5px;color:var(--mid);margin-top:2px;font-weight:400}
+
+/* ─── FINDING CARD ─── */
+.findings{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.findings.three{grid-template-columns:1fr 1fr 1fr}
+.finding{background:var(--white);border:1px solid var(--rule);border-radius:8px;overflow:hidden}
+.finding.urgent{border-color:#C44;border-top:3px solid #C44}
+.finding.watch{border-color:var(--amber);border-top:3px solid var(--amber)}
+.finding.add-now{border-color:var(--teal);border-top:3px solid var(--teal)}
+.finding-head{padding:12px 14px 10px;background:var(--bg)}
+.finding-head .f-label{font-size:7px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px}
+.finding-head .f-label.urgent{color:#C44}
+.finding-head .f-label.watch{color:var(--amber)}
+.finding-head .f-label.add-now{color:var(--teal)}
+.finding-head h4{font-size:10.5px;font-weight:700;color:var(--ink);line-height:1.3}
+.finding-body{padding:10px 14px 12px}
+.finding-body .signal{margin-bottom:7px}
+.finding-body .row-label{font-size:7.5px;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:.8px;margin-bottom:2px}
+.finding-body .row-label.amber{color:var(--amber)}
+.finding-body .row-label.red{color:#C44}
+.finding-body p{font-size:8.5px;color:var(--mid);line-height:1.5}
+.finding-body .action-pill{display:inline-block;font-size:7px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:3px 8px;border-radius:20px;margin-top:6px}
+.pill-add{background:var(--teal-l);color:var(--teal)}
+.pill-watch{background:var(--amber-l);color:var(--amber)}
+.pill-defer{background:#F0F0F0;color:#888}
+.pill-urgent{background:var(--red-l);color:var(--red)}
+
+/* ─── CROSS-RAIL ─── */
+.cross-rail{background:var(--ink);color:#fff;border-radius:8px;padding:18px 20px;margin-bottom:36px}
+.cross-rail h3{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;opacity:.5;margin-bottom:14px}
+.cross-items{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.cross-item{background:rgba(255,255,255,.06);border-radius:6px;padding:12px 14px}
+.cross-item .ci-title{font-size:9.5px;font-weight:700;margin-bottom:4px}
+.cross-item p{font-size:8px;opacity:.7;line-height:1.5}
+
+/* ─── DESIGN RESPONSES ─── */
+.responses-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-top:4px}
+.response-rail{border-radius:8px;overflow:hidden}
+.response-rail.kp{border:1.5px solid var(--amber)}
+.response-rail.id{border:1.5px solid var(--blue)}
+.response-rail.td{border:1.5px solid var(--forest)}
+.r-head{padding:10px 14px 8px}
+.r-head.kp{background:var(--amber-l)}
+.r-head.id{background:var(--blue-l)}
+.r-head.td{background:var(--forest-l)}
+.r-head .r-rail{font-size:7px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:2px}
+.r-head.kp .r-rail{color:var(--amber)}
+.r-head.id .r-rail{color:var(--blue)}
+.r-head.td .r-rail{color:var(--forest)}
+.r-head h4{font-size:10px;font-weight:700;color:var(--ink)}
+.r-body{padding:10px 14px 12px;background:var(--white)}
+.r-item{display:flex;gap:6px;margin-bottom:6px;align-items:flex-start}
+.r-item:last-child{margin-bottom:0}
+.r-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.r-dot.now{background:var(--teal)}
+.r-dot.watch{background:var(--amber)}
+.r-dot.defer{background:#CCC}
+.r-item span{font-size:8px;color:var(--mid);line-height:1.4}
+.r-item strong{color:var(--ink);font-weight:600}
+
+/* ─── VC SIGNAL ─── */
+.vc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px}
+.vc-card{background:var(--white);border:1px solid var(--rule);border-radius:8px;padding:12px 13px}
+.vc-card .vc-n{font-size:18px;font-weight:800;color:var(--teal);line-height:1}
+.vc-card .vc-l{font-size:8px;font-weight:700;color:var(--ink);margin-top:3px}
+.vc-card .vc-d{font-size:7.5px;color:var(--mid);margin-top:2px;line-height:1.4}
+
+/* ─── FOOTER ─── */
+.footer{border-top:1px solid var(--rule);padding:12px 36px;display:flex;justify-content:space-between;align-items:center;background:var(--white)}
+.footer .disc{font-size:7px;color:#aaa;max-width:500px;line-height:1.4}
+.footer .brand{font-size:8px;font-weight:700;color:var(--teal)}
+
+@media print{body{background:#fff}.header::after{display:none}}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="doc-type">KMV Platform Rails — Strategic Intelligence</div>
+  <h1>Agentic AI Signal Scan<br>Finance · Auth · Comms</h1>
+  <div class="sub">What's happening globally in agentic AI across our three rail domains — what it means for Kipkiren Pay, Identiti, and Todoku — and what we should add, watch, or defer.</div>
+  <div class="meta-row">
+    <span>Full Scan · 3 Rails</span>
+    <span>Date: 4 May 2026</span>
+    <span>Sources: IMF · BIS · PYMNTS · Sumsub · CSA · TechCabal · PitchBook · QED Investors · Fenwick · EY · WEF</span>
+  </div>
+</div>
+
+<!-- EXEC SUMMARY -->
+<div class="exec">
+  <h2>60-Second Executive Summary</h2>
+  <div class="exec-bullets">
+    <div class="exec-bullet">
+      <div class="n">⚡ NOW</div>
+      <div class="d">The agent wave is real and arriving faster than most rail designs assumed. Kipkiren Pay needs a delegation model before agents start hitting the payment API on behalf of users. The question is not if — Ant just open-sourced a protocol for it.</div>
+    </div>
+    <div class="exec-bullet">
+      <div class="n">🚨 URGENT</div>
+      <div class="d">Deepfake-as-a-Service costs $10–50. One attacker recorded 8,065 injection attacks against a single financial institution's liveness checks in 8 months. Identiti's biometric module needs injection-attack detection (IAD) on the vendor shortlist — not post-build.</div>
+    </div>
+    <div class="exec-bullet">
+      <div class="n">⚠️ WATCH</div>
+      <div class="d">Meta changed WhatsApp Business API terms in October 2025 to ban general-purpose AI providers. COMESA opened a formal probe in February 2026. Todoku's WhatsApp channel is directly exposed. Template-only posture is already compliant — but the platform risk is now political.</div>
+    </div>
+  </div>
+</div>
+
+<!-- BODY -->
+<div class="body">
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- SECTION 1 — KIPKIREN PAY -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-icon">💳</div>
+    <div>
+      <div class="section-title">Agentic AI in Finance — Kipkiren Pay</div>
+      <div class="section-sub">Payment rail exposure, design gaps, and watch items from the global agentic payments signal sweep</div>
+    </div>
+  </div>
+
+  <div class="findings">
+
+    <div class="finding urgent">
+      <div class="finding-head">
+        <div class="f-label urgent">🔴 Gap Identified — Act Now</div>
+        <h4>The payment API was designed for humans. Agents are already arriving.</h4>
+      </div>
+      <div class="finding-body">
+        <div class="signal">
+          <div class="row-label">Signal</div>
+          <p>Ant International open-sourced the Agentic Mobile Protocol (AMP) on 28 April 2026 — the world's first agentic payment framework for mobile wallets, built explicitly because existing payment rails were designed for human-initiated transactions. Fenwick Law notes that 2026 is the year agentic payments move from demos into regulated workflows. The IMF published a formal note in April 2026 on how agentic AI will reshape payment authorisation. This is not a 2027 problem.</p>
+        </div>
+        <div class="signal">
+          <div class="row-label amber">Relevance to Kipkiren Pay</div>
+          <p>The current Kipkiren Pay Rail Contract has no delegation model. An agent acting on behalf of a user — say, an AI shopping assistant in kaLunch automatically reordering a weekly lunch — would need: (a) a credential separate from the user's step-up token, (b) a defined scope of authority (maximum spend, category restriction, frequency cap), and (c) a revocation mechanism. None of these exist in v1.</p>
+        </div>
+        <span class="action-pill pill-add">Add to v1.1 roadmap — agent delegation spec</span>
+      </div>
+    </div>
+
+    <div class="finding urgent">
+      <div class="finding-head">
+        <div class="f-label urgent">🔴 Fraud Vector — Immediate Threat</div>
+        <h4>AI-orchestrated synthetic identity fraud: dormant profiles, simultaneous drain</h4>
+      </div>
+      <div class="finding-body">
+        <div class="signal">
+          <div class="row-label">Signal</div>
+          <p>AI agents are now managing synthetic identity profiles over 18 months, building transaction history to appear legitimate, then executing simultaneous coordinated balance drains across multiple institutions in a single "activation event." Synthetic identities were used in 21% of first-party frauds detected in 2025 (Sumsub). AI-enabled fraud surged 1,210% between Jan–Dec 2025 versus a 195% rise in traditional fraud. Overall fraud losses are projected to rise from $23B in 2025 to $58.3B globally by 2030.</p>
+        </div>
+        <div class="signal">
+          <div class="row-label amber">Relevance to Kipkiren Pay</div>
+          <p>The current rail contract enforces tier limits and rolling-30-day caps, which are rate-limiting controls. But a dormant synthetic identity that has built up a clean transaction history over 18 months would pass those checks. Kipkiren Pay needs cross-account behavioural pattern detection at the platform layer — not just per-account envelope enforcement.</p>
+        </div>
+        <span class="action-pill pill-urgent">Add to Build Readiness — AI fraud pattern monitoring</span>
+      </div>
+    </div>
+
+    <div class="finding watch">
+      <div class="finding-head">
+        <div class="f-label watch">🟡 Watch</div>
+        <h4>"Know Your Agent" (KYA) is becoming a regulatory expectation, not just a design pattern</h4>
+      </div>
+      <div class="finding-body">
+        <div class="signal">
+          <div class="row-label">Signal</div>
+          <p>Ant's AMP framework embeds a full-spectrum "Know Your Agent" framework establishing an agent's digital identity and certifying its authorised capabilities. The IMDA Model Governance Framework for Agentic AI (WEF Davos, January 2026) and the Singapore CSA Addendum (October 2025) both designate agent identity and delegation as a priority governance dimension. FINRA's 2026 Regulatory Oversight Report explicitly calls out agentic AI governance as a new exam area for financial firms.</p>
+        </div>
+        <div class="signal">
+          <div class="row-label amber">Relevance to Kipkiren Pay</div>
+          <p>CBK does not yet have an agentic AI payments framework — but the EY Global Financial Services Regulatory Outlook 2026 notes AI adoption is "outpacing regulatory oversight" and that human-in-the-loop oversight is becoming a regulatory expectation. Kipkiren Pay's current design has no agent registry, no agent trust rating, and no distinction between human-initiated and agent-initiated transactions in the audit log.</p>
+        </div>
+        <span class="action-pill pill-watch">Watch — flag for CBK pre-application meeting agenda</span>
+      </div>
+    </div>
+
+    <div class="finding watch">
+      <div class="finding-head">
+        <div class="f-label watch">🟡 Watch</div>
+        <h4>AI-driven AML pattern obfuscation: smurfing at machine speed</h4>
+      </div>
+      <div class="finding-body">
+        <div class="signal">
+          <div class="row-label">Signal</div>
+          <p>AI is enabling automated transactions designed to mimic legitimate patterns, obscure fund origins, and exploit platforms including DeFi and gaming for anonymity. Criminals use AI to structure transactions just below reporting thresholds, coordinate across multiple synthetic accounts, and rotate through platforms faster than rule-based AML systems can flag them. Sumsub and Duane Morris LLP both flag AI-enabled AML as a top 2026 compliance risk.</p>
+        </div>
+        <div class="signal">
+          <div class="row-label amber">Relevance to Kipkiren Pay</div>
+          <p>The current AML approach (tier limits, rolling-30-day caps, POCAMLA/FRC reporting) is rules-based. Rules-based AML is exactly what AI-orchestrated structuring is designed to evade. This is a medium-term concern given Kipkiren Pay's early volume, but the architecture decision (rules-only vs. behavioural + rules) should be made now, not after the platform scales.</p>
+        </div>
+        <span class="action-pill pill-watch">Watch — include in AML vendor evaluation criteria</span>
+      </div>
+    </div>
+
+    <div class="finding add-now">
+      <div class="finding-head">
+        <div class="f-label add-now">🟢 Design Response</div>
+        <h4>Step-up token model is good — but needs an explicit "agent-initiated" flag</h4>
+      </div>
+      <div class="finding-body">
+        <div class="signal">
+          <div class="row-label">Signal</div>
+          <p>The CSA Addendum designates identity spoofing and impersonation as Threat T9, and requires organisations to authenticate agents using verifiable credentials with short-lived OAuth 2.0/OIDC tokens. Gartner predicts 30% of enterprises will deploy AI agents acting with minimal human intervention by 2026. The emerging standard (Strata, CSA, IMDA) distinguishes between "subject" (human delegating) and "actor" (agent executing) in every authorised action.</p>
+        </div>
+        <div class="signal">
+          <div class="row-label amber">Relevance to Kipkiren Pay</div>
+          <p>Good news: Kipkiren Pay's step-up JWT already includes audience, subject (Account UUID), and intended_operation claims. Adding an <code>initiated_by</code> claim ("human" | "agent") and an optional <code>agent_id</code> claim to the JWT schema costs almost nothing at v1 and future-proofs the audit log for when the CBK does ask. This is a one-field addition to the Identiti Schema Appendix.</p>
+        </div>
+        <span class="action-pill pill-add">Add to v1.0 Schema Appendix — one claim, future-proof</span>
+      </div>
+    </div>
+
+    <div class="finding watch">
+      <div class="finding-head">
+        <div class="f-label watch">🟡 Watch</div>
+        <h4>Agentic payments regulation is moving — no CBK framework yet, but it's coming</h4>
+      </div>
+      <div class="finding-body">
+        <div class="signal">
+          <div class="row-label">Signal</div>
+          <p>The IMF note (April 2026) examines how agentic AI affects payment authorisation, liquidity, settlement, compliance, and resilience. Fenwick's April 2026 briefing notes that existing financial consumer protection laws were built for human-decisioned transactions and "may not appropriately address challenges raised by agentic payments." EY's 2026 Global Regulatory Outlook confirms AI adoption is outpacing oversight across all major regions — Africa/APAC included.</p>
+        </div>
+        <div class="signal">
+          <div class="row-label amber">Relevance to Kipkiren Pay</div>
+          <p>CBK has historically been a forward-leaning sandbox regulator. The CBK pre-application meeting is an opportunity to get ahead of this by proactively raising the question of agent-initiated payment authorisation before CBK defines it reactively. Being the party that raises the question is better than being regulated by the answer to someone else's question.</p>
+        </div>
+        <span class="action-pill pill-watch">Watch — raise at CBK pre-application meeting</span>
+      </div>
+    </div>
+
+    <div class="finding watch">
+      <div class="finding-head">
+        <div class="f-label watch">🟡 Watch</div>
+        <h4>AI-generated voice cloning for payment authorisation fraud</h4>
+      </div>
+      <div class="finding-body">
+        <div class="signal">
+          <div class="row-label">Signal</div>
+          <p>AI-generated voice messages are already being used for vishing (voice phishing) at scale — the FBI issued an advisory in May 2025 after a senior US officials impersonation campaign. CrowdStrike reported a 442% rise in vishing between H1 and H2 2024. Voice-based step-up authorisation (OTP readout via phone call) is specifically targeted because the fraud cycle is short and the social engineering is effective on mobile-first users.</p>
+        </div>
+        <div class="signal">
+          <div class="row-label amber">Relevance to Kipkiren Pay</div>
+          <p>Kipkiren Pay's step-up flow relies on OTP delivery via Todoku. The voice OTP channel (Todoku's voice rail) is the most vulnerable: a convincing AI voice call impersonating KMV/Kipkiren Pay could socially engineer a customer into revealing or confirming an OTP. The design should include a "KMV never calls you to ask for your OTP" message in step-up confirmation SMS bodies and in-app UI.</p>
+        </div>
+        <span class="action-pill pill-add">Add — anti-social-engineering copy to step-up templates</span>
+      </div>
+    </div>
+
+    <div class="finding add-now">
+      <div class="finding-head">
+        <div class="f-label add-now">🟢 Opportunity Signal</div>
+        <h4>AI-powered fraud detection is a genuine product differentiator at the rail layer</h4>
+      </div>
+      <div class="finding-body">
+        <div class="signal">
+          <div class="row-label">Signal</div>
+          <p>Mastercard reported up to 300% improvement in fraud detection rates by embedding generative AI across its fraud detection systems in 2025. AI-powered AML systems that go beyond rule-based approaches are flagged by QED Investors as "underhyped" — specifically AI purpose-built for auditable, controllable regulated environments. 44% of finance teams will use agentic AI in 2026 (Wolters Kluwer).</p>
+        </div>
+        <div class="signal">
+          <div class="row-label amber">Relevance to Kipkiren Pay</div>
+          <p>Building AI-powered behavioural fraud detection into Kipkiren Pay from the start — rather than retrofitting it later — positions the rail as a more sophisticated offering than a pure transaction pipe. It's also a genuine investor story: the platform accumulates cross-app behavioural signals that no single-app competitor can match.</p>
+        </div>
+        <span class="action-pill pill-watch">Watch — include in Phase 2 product roadmap</span>
+      </div>
+    </div>
+
+  </div><!-- /findings -->
+</div><!-- /section 1 -->
+
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- SECTION 2 — IDENTITI -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-icon">🪪</div>
+    <div>
+      <div class="section-title">Agentic AI in Auth / Identity — Identiti</div>
+      <div class="section-sub">Identity rail exposure to the agentic AI threat landscape — deepfakes, non-human identity, agent delegation, and design gaps</div>
+    </div>
+  </div>
+
+  <div class="findings">
+
+    <div class="finding urgent">
+      <div class="finding-head">
+        <div class="f-label urgent">🔴 Critical Gap — Pre-Build</div>
+        <h4>Deepfake-as-a-Service: biometric injection attacks cost $10–50 and bypass liveness checks</h4>
+      </div>
+      <div class="finding-body">
+        <div class="signal">
+          <div class="row-label">Signal</div>
+          <p>One attacker service recorded 8,065 injection attacks against a single financial institution's liveness checks for KYC in 8 months (Jan–Aug 2025). Deepfake-as-a-Service costs $10–50. The WEF's Cybercrime Atlas (January 2026) tested 17 face-swapping tools and 8 camera injection tools and found most could bypass standard biometric onboarding checks. Palo Alto Networks demonstrated a convincing synthetic identity for video interviews in 70 minutes using consumer hardware. The EU is introducing ISO 25456 and CEN/TS 18099 for injection-attack detection (IAD) specifically because passive liveness detection is no longer sufficient.</p>
+        </div>
+        <div class="signal">
+          <div class="row-label red">Identiti design gap</div>
+          <p>The Identiti Rail Contract v1.0 specifies "behavioural biometrics SDK" as a Track A dependency and stubs it for v1. This is correct for the full biometric stack. But injection-attack detection (IAD) — specifically blocking virtual camera drivers from feeding synthetic streams into the liveness check pipeline — is not mentioned anywhere in the contract or design spec. IAD is not the same as behavioural biometrics and can be specified as a vendor requirement today.</p>
+        </div>
+        <span class="action-pill pill-urgent">Add to KYC vendor RFQ — IAD (injection-attack detection) requirement</span>
+      </div>
+    </div>
+
+    <div class="finding urgent">
+      <div class="finding-head">
+        <div class="f-label urgent">🔴 Critical Gap — Design</div>
+        <h4>Non-human identity: Identiti has no framework for authenticating AI agents</h4>
+      </div>
+      <div class="finding-body">
+        <div class="signal">
+          <div class="row-label">Signal</div>
+          <p>Non-human identities outnumber humans 50:1 to 144:1 in enterprise environments (CSA, Strata). Gartner predicts 30% of enterprises deploy agents with minimal human oversight by 2026. The CSA Addendum (Oct 2025) requires a trusted agent registry and short-lived OAuth 2.0/OIDC tokens for agent authentication. The IMDA framework (Jan 2026) lists agent identity as a primary governance dimension. Google's A2A protocol, Anthropic's MCP (OAuth 2.1 added Jan 2026), and Ant's AMP all include agent identity primitives. This is a fast-moving space.</p>
+        </div>
+        <div class="signal">
+          <div class="row-label red">Identiti design gap</div>
+          <p>Identiti v1.0 issues identities to human platform customers. It has no concept of an agent identity, no agent registry, no agent credential type, and no delegation chain. As KMV apps start embedding AI assistants (a kaLunch ordering assistant, a Chapaa savings advisor), those agents will need to act on behalf of users — and Identiti is the credential authority. The architecture decision on whether agents get first-class Identiti credentials or a separate mechanism needs to be made at v1.1, not discovered under pressure.</p>
+        </div>
+        <span class="action-pill pill-add">Add to v1.1 roadmap — agent identity spec + registry</span>
+      </div>
+    </div>
+
+    <div class="finding urgent">
+      <div class="finding-head">
+        <div class="f-label urgent">🔴 Threat — Ongoing</div>
+        <h4>Synthetic identity fraud: AI agents build dormant identities over 18 months to pass KYC</h4>
+      </div>
+      <div class="finding-body">
+        <div class="signal">
+          <div class="row-label">Signal</div>
+          <p>Synthetic identities combine real and fabricated data to construct a person who never existed. In 2025, 21% of first-party frauds used synthetic identities. AI agents are managing these profiles programmatically, building legitimate transaction history before an activation event. There is often no real victim to report, so detection relies entirely on platform-side pattern recognition. AI-generated documents represented 2% of detected fake docs in 2025 (Sumsub, measured over only 6 months) — expected to grow rapidly.</p>
+        </div>
+        <div class="signal">
+          <div class="row-label red">Identiti design gap</div>
+          <p>IPRS verification is the primary defence against synthetic KYC at onboarding (confirming the national ID maps to a real person). But IPRS only validates identity at point of onboarding. Post-onboarding, Identiti has no mechanism to detect account activity that looks inconsistent with the declared identity profile (e.g., activity from multiple device fingerprints, unusual step-up patterns, velocity inconsistencies). This is a monitoring gap, not an onboarding gap.</p>
+        </div>
+        <span class="action-pill pill-watch">Watch — include continuous monitoring in behavioural biometrics spec</span>
+      </div>
+    </div>
+
+    <div class="finding watch">
+      <div class="finding-head">
+        <div class="f-label watch">🟡 Watch</div>
+        <h4>OAuth is being rebuilt for agents — the step-up JWT model needs an upgrade path</h4>
+      </div>
+      <div class="finding-body">
+        <div class="signal">
+          <div class="row-label">Signal</div>
+          <p>Traditional OAuth was designed for humans and static service accounts. The agentic identity landscape is converging on: On-Behalf-Of (OBO) tokens, Token Exchange (RFC 8693), Proof-of-Possession (DPoP), PKCE-mandatory flows, and Continuous Access Evaluation Protocol (CAEP) for real-time revocation. MCP added OAuth 2.1 with mandatory PKCE in January 2026. CSA, IMDA, and major vendors (Strata, Microsoft) are all pointing the same direction. The "subject" (human) / "actor" (agent) distinction in token claims is emerging as the standard.</p>
+        </div>
+        <div class="signal">
+          <div class="row-label amber">Relevance to Identiti</div>
+          <p>Identiti's step-up JWT is RS256-signed with subject, audience, intended_operation, and jti. This is a solid foundation. Adding a <code>actor</code> claim (for agent-initiated flows) and implementing CAEP for real-time step-up token revocation (rather than relying solely on the 5-minute expiry) are targeted upgrades that keep Identiti ahead of the curve without redesigning the architecture.</p>
+        </div>
+        <span class="action-pill pill-add">Add — actor claim + CAEP revocation endpoint to v1.1 roadmap</span>
+      </div>
+    </div>
+
+    <div class="finding watch">
+      <div class="finding-head">
+        <div class="f-label watch">🟡 Watch</div>
+        <h4>Adversary-in-the-Middle (AiTM): 80% of recent MFA bypasses use session token theft</h4>
+      </div>
+      <div class="finding-body">
+        <div class="signal">
+          <div class="row-label">Signal</div>
+          <p>The Microsoft 2025 Digital Defense Report found 80% of recent MFA-bypass breaches used session-token theft via AiTM phishing kits — not credential theft. The attacker proxies the real login flow, intercepts the session token post-authentication, and replays it. This bypasses OTP-based step-up entirely because the valid session token already contains the authenticated claim. AiTM kits targeting M-Pesa-adjacent flows have been observed in East Africa.</p>
+        </div>
+        <div class="signal">
+          <div class="row-label amber">Relevance to Identiti</div>
+          <p>Identiti issues JWTs. A stolen JWT that is still within its freshness window is valid. The current design's defences are: (a) short freshness windows (5 min for step-up, 15 min for phone tokens), and (b) single-use enforcement on step-up tokens via the jti table. Both are good. The gap is the authentication JWT (from POST /v1/auth/authenticate) — what is its TTL? If it is long (hours/days), AiTM interception is much more dangerous. The authentication JWT TTL needs an explicit policy in the contract.</p>
+        </div>
+        <span class="action-pill pill-add">Add — explicit auth JWT TTL policy to Identiti Rail Contract</span>
+      </div>
+    </div>
+
+    <div class="finding watch">
+      <div class="finding-head">
+        <div class="f-label watch">🟡 Watch</div>
+        <h4>DPA 2019 + agentic AI: the ICO and ODPC are developing AI-specific data protection guidance</h4>
+      </div>
+      <div class="finding-body">
+        <div class="signal">
+          <div class="row-label">Signal</div>
+          <p>The UK ICO published views on data protection implications of agentic AI in January 2026. The EU AI Act now treats biometric systems as high-risk, requiring transparency documentation. Kenya's ODPC is actively developing its regulatory posture on AI and biometric data — the 2025 registration consultation included questions about automated decision-making. Among the 3,235 enterprise leaders in Deloitte's 2026 State of AI report, 73% cite data privacy as their top AI risk.</p>
+        </div>
+        <div class="signal">
+          <div class="row-label amber">Relevance to Identiti</div>
+          <p>Identiti holds biometric data and makes automated KYC decisions. Under DPA 2019, automated decision-making with significant effects on individuals requires a lawful basis and (in practice) a DPIA. The ODPC registration and DPIA for the biometric module need to address the question: when Identiti's liveness check rejects an onboarding attempt, what is the appeal mechanism? This is a legal design question, not just a technical one.</p>
+        </div>
+        <span class="action-pill pill-watch">Watch — flag for data protection counsel engagement</span>
+      </div>
+    </div>
+
+    <div class="finding add-now">
+      <div class="finding-head">
+        <div class="f-label add-now">🟢 Opportunity Signal</div>
+        <h4>Identiti is well-positioned as the agent credential authority for the KMV ecosystem</h4>
+      </div>
+      <div class="finding-body">
+        <div class="signal">
+          <div class="row-label">Signal</div>
+          <p>The CSA Addendum requires organisations to maintain a trusted agent registry. AMP embeds a Know Your Agent (KYA) framework. Every enterprise building agents will need an identity authority for those agents — and the market for B2B agent identity infrastructure is genuinely nascent. QED Investors (Dec 2025) specifically calls out "AI-native infrastructure for regulated environments" as underhyped. AI accounted for 58% of all fintech VC in 2025 (Silicon Valley Bank).</p>
+        </div>
+        <div class="signal">
+          <div class="row-label amber">Relevance to Identiti</div>
+          <p>If Identiti adds an agent identity primitive (agent registry, agent credential type, delegation chain), it becomes the KMV platform's agent credential authority — not just the human identity layer. This strengthens the B2B externalisation story: Identiti as a service for fintech KYC is already in the investor one-pager. "Identiti as the agent credential authority for Kenya's fintech ecosystem" is a stronger version of that story.</p>
+        </div>
+        <span class="action-pill pill-add">Opportunity — include in v1.1 roadmap and B2B pitch</span>
+      </div>
+    </div>
+
+    <div class="finding watch">
+      <div class="finding-head">
+        <div class="f-label watch">🟡 Watch</div>
+        <h4>Just-in-time (JIT) provisioning is becoming the identity security standard for ephemeral actors</h4>
+      </div>
+      <div class="finding-body">
+        <div class="signal">
+          <div class="row-label">Signal</div>
+          <p>The CSA Addendum, Strata, and the emerging OAuth 2.1 profile all converge on just-in-time provisioning: create credentials only when needed, bind them to their specific task and delegation chain, and retire them the moment the task is done. No leftover credentials, no risk sprawl. Static service accounts are flagged as the primary risk vector in the CSA's findings — the Salesloft Drift breach was cited as an example of OAuth tokens active months past business justification.</p>
+        </div>
+        <div class="signal">
+          <div class="row-label amber">Relevance to Identiti</div>
+          <p>Identiti's phone token model (15-minute freshness, per-audience) is already very close to JIT provisioning. Step-up tokens (5-minute, single-use) are even tighter. The principle is already embedded in the design. Documenting this explicitly as a JIT identity pattern in the Rail Contract — especially in the B2B pitch — signals design sophistication to investors and enterprise prospects.</p>
+        </div>
+        <span class="action-pill pill-add">Add — document JIT identity posture explicitly in contract language</span>
+      </div>
+    </div>
+
+  </div><!-- /findings -->
+</div><!-- /section 2 -->
+
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- SECTION 3 — TODOKU -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-icon">📡</div>
+    <div>
+      <div class="section-title">Agentic AI in Comms — Todoku</div>
+      <div class="section-sub">Comms rail exposure to AI-driven fraud, platform policy changes, and design gaps</div>
+    </div>
+  </div>
+
+  <div class="findings">
+
+    <div class="finding urgent">
+      <div class="finding-head">
+        <div class="f-label urgent">🔴 Platform Risk — Active</div>
+        <h4>Meta changed WhatsApp Business API terms to ban AI providers. COMESA probe is live.</h4>
+      </div>
+      <div class="finding-body">
+        <div class="signal">
+          <div class="row-label">Signal</div>
+          <p>In October 2025, Meta amended the WhatsApp Business Solution Terms to prohibit general-purpose AI providers from accessing the WhatsApp Business API. The ban applies to new accounts from 15 October 2025, existing accounts from 15 January 2026. On 23 February 2026, the COMESA Competition and Consumer Commission opened a formal investigation into Meta for alleged abuse of dominance, specifically citing this restriction. EU, Italy, and Brazil have raised similar concerns. Kenya is a leading digital economy within the 21-member COMESA bloc.</p>
+        </div>
+        <div class="signal">
+          <div class="row-label red">Relevance to Todoku</div>
+          <p>Todoku's WhatsApp channel uses the WhatsApp Business API. The Meta ToS change has two direct implications: (1) Todoku cannot allow consuming apps to build general-purpose AI chatbots over the WhatsApp channel — this is already blocked by the template-only design, but it needs to be explicitly documented as a ToS-compliance reason. (2) The COMESA probe outcome could change the policy in either direction. Todoku's WhatsApp approval process (dual Todoku + Meta approval) creates direct exposure to Meta's platform decisions.</p>
+        </div>
+        <span class="action-pill pill-urgent">Add — WhatsApp AI ToS compliance note to Todoku contract + monitor COMESA probe</span>
+      </div>
+    </div>
+
+    <div class="finding urgent">
+      <div class="finding-head">
+        <div class="f-label urgent">🔴 Fraud Vector — Active in Kenya</div>
+        <h4>AI-generated smishing: deepfake financial institution SMS bypass conventional spam filters</h4>
+      </div>
+      <div class="finding-body">
+        <div class="signal">
+          <div class="row-label">Signal</div>
+          <p>KE-CIRT/CC reported 2.5 billion cyber threat events in Kenya in Q1 2025 — a 201.85% increase. Deepfake incidents in Africa surged sevenfold from Q2 to Q4 2024. Commercial anti-smishing tools blocked only 25–35% of threats in 2025. Smishing click-through rates reach 19–36% (versus 2–4% for email phishing). 82.6% of phishing emails in Sep 2024–Feb 2025 contained AI (KnowBe4). AI-generated SMS is specifically designed to be short, direct, and to mimic the sender ID of a legitimate financial institution.</p>
+        </div>
+        <div class="signal">
+          <div class="row-label red">Relevance to Todoku</div>
+          <p>Todoku manages sender IDs for all KMV apps. A fraudster impersonating a Todoku-managed sender ID ("KaLunch", "Chapaa", etc.) via a third-party aggregator would send smishing messages that appear to come from KMV brands. Todoku's template-only posture protects the outbound channel — but Todoku has no current mechanism for monitoring for sender ID spoofing by third parties, nor for providing consumers a way to verify that a message genuinely originated from the Todoku rail. Sender ID verification is missing.</p>
+        </div>
+        <span class="action-pill pill-urgent">Add — sender ID spoofing monitoring + consumer verification mechanism</span>
+      </div>
+    </div>
+
+    <div class="finding urgent">
+      <div class="finding-head">
+        <div class="f-label urgent">🔴 Gap — Template Abuse Vector</div>
+        <h4>AI-assisted template evasion: approved templates can be exploited as social engineering tools</h4>
+      </div>
+      <div class="finding-body">
+        <div class="signal">
+          <div class="row-label">Signal</div>
+          <p>The template approval model is a strong control. But a compromised app credential (HMAC secret leaked) allows an attacker to send approved templates to arbitrary recipients — potentially at high volume, using the app's rate limits, with legitimate sender IDs. This is not a novel attack; it is the standard abuse scenario for any compromised messaging API key. With AI-driven recipient targeting (scraped data, enriched contact lists), the damage radius expands dramatically.</p>
+        </div>
+        <div class="signal">
+          <div class="row-label red">Relevance to Todoku</div>
+          <p>The current Todoku design has HMAC authentication and per-app rate limits. What it does not have is: (a) anomalous recipient pattern detection (e.g., sudden spike in unique recipient rate to previously uncontacted numbers), (b) content-fingerprint monitoring (detecting if an approved template is being used in a pattern inconsistent with the app's normal use), or (c) an API key compromise response playbook beyond "Platform Ops suspends the tenant." These are operational gaps, not architectural ones.</p>
+        </div>
+        <span class="action-pill pill-add">Add — anomalous recipient pattern alert + key compromise playbook</span>
+      </div>
+    </div>
+
+    <div class="finding watch">
+      <div class="finding-head">
+        <div class="f-label watch">🟡 Watch</div>
+        <h4>AI voice cloning for OTP vishing is a direct attack on Todoku's voice channel</h4>
+      </div>
+      <div class="finding-body">
+        <div class="signal">
+          <div class="row-label">Signal</div>
+          <p>CrowdStrike reported a 442% rise in vishing in H2 2024. The FBI issued a May 2025 advisory on AI-generated voice messages impersonating officials. ElevenLabs raised $500M Series D at $11B valuation — voice AI is mainstream infrastructure. The specific attack pattern: AI voice call impersonating a financial institution's fraud team, claiming the customer's OTP is needed to "block a fraudulent transaction." High success rate on mobile-first, M-Pesa-native users who are accustomed to receiving calls from banks.</p>
+        </div>
+        <div class="signal">
+          <div class="row-label amber">Relevance to Todoku</div>
+          <p>Todoku's voice OTP channel (TTS readout) is the mechanism being impersonated. Defences are primarily at the Identiti and consumer education layer — Todoku cannot control what calls a fraudster makes. But Todoku can add: (a) a call-back number verification mechanism (the legitimate call comes from a verified number the customer can check), and (b) explicit language in every voice OTP: "KMV will never ask you to repeat this code to anyone." This is a copy and UX decision, not a systems change.</p>
+        </div>
+        <span class="action-pill pill-add">Add — anti-vishing copy to all voice OTP templates</span>
+      </div>
+    </div>
+
+    <div class="finding watch">
+      <div class="finding-head">
+        <div class="f-label watch">🟡 Watch</div>
+        <h4>AI-driven bulk SMS abuse: agents could hit Todoku's send surface at inhuman volume</h4>
+      </div>
+      <div class="finding-body">
+        <div class="signal">
+          <div class="row-label">Signal</div>
+          <p>AI agents operating at API speed can exhaust rate limits, probe envelope boundaries, and find the exact threshold below which the diversity check doesn't trigger. The per-second/minute/hour/day rate limits in the current Todoku design are human-scale controls. An agent executing a coordinated blast can stay within each individual window while generating an aggregate volume that would immediately be recognised as abnormal by a human operator — but not by a rule-based envelope checker.</p>
+        </div>
+        <div class="signal">
+          <div class="row-label amber">Relevance to Todoku</div>
+          <p>The existing recipient diversity check (ratio of unique recipients to total messages) is the right control for blast detection. The question is whether the diversity baseline values in the per-app envelope are set tightly enough for agent-speed operations. A human blasting messages accidentally degrades gradually; an agent optimising for maximum throughput while staying under the diversity threshold does it instantly. The diversity check needs a time-windowed velocity component, not just a ratio check.</p>
+        </div>
+        <span class="action-pill pill-add">Add — time-windowed velocity component to diversity check algorithm</span>
+      </div>
+    </div>
+
+    <div class="finding add-now">
+      <div class="finding-head">
+        <div class="f-label add-now">🟢 Design Confirmation</div>
+        <h4>Template-only posture is the right call — it's now a competitive differentiator</h4>
+      </div>
+      <div class="finding-body">
+        <div class="signal">
+          <div class="row-label">Signal</div>
+          <p>Meta's WhatsApp ToS change, the COMESA probe, and the surge in AI-generated smishing all reinforce the same conclusion: uncontrolled free-form messaging via CPaaS APIs is now a regulatory and fraud liability. Meta is forcing the industry toward template-controlled messaging. CA-K in Kenya mandates promotional SMS time windows. Regulators globally are tightening content controls on transactional messaging channels.</p>
+        </div>
+        <div class="signal">
+          <div class="row-label amber">Relevance to Todoku</div>
+          <p>Todoku's template-only design — which was a hard architectural decision in the Rail Contract — is now also the correct compliance posture for WhatsApp and the direction of travel for SMS. The design that apps cannot inject free-form content via the API is a moat that strengthens as the regulatory environment tightens. This should be communicated explicitly in the investor one-pager and the B2B pitch.</p>
+        </div>
+        <span class="action-pill pill-add">Confirmed — strengthen template posture language in investor pack and B2B materials</span>
+      </div>
+    </div>
+
+    <div class="finding watch">
+      <div class="finding-head">
+        <div class="f-label watch">🟡 Watch</div>
+        <h4>OTP channel is being specifically targeted — 36% smishing click-through on mobile</h4>
+      </div>
+      <div class="finding-body">
+        <div class="signal">
+          <div class="row-label">Signal</div>
+          <p>Smishing click-through rates of 19–36% (versus 2–4% for email) make SMS the most effective social engineering channel. OTP-related smishing — fake "your OTP is expiring" or "confirm your payment" messages — are a primary vector because they replicate the exact message format of legitimate transactional SMS. The FBI's IC3 received 22,364 AI-related complaints in 2025, with smishing being the fastest-growing category.</p>
+        </div>
+        <div class="signal">
+          <div class="row-label amber">Relevance to Todoku</div>
+          <p>The OTP-reply inbound channel (where a customer replies with their OTP) is the highest-risk surface. A fraudster who intercepts the OTP by tricking the customer into replying to a spoofed message wins the authentication. Todoku's OTP-reply design correctly limits the reply window (2–30 minutes) and matches replies to the originating message. Adding an explicit "do not share this code with anyone, including KMV staff" line to every OTP template body should be a mandatory template requirement, not optional copy.</p>
+        </div>
+        <span class="action-pill pill-add">Add — mandatory anti-phishing line to all class_0 OTP template bodies</span>
+      </div>
+    </div>
+
+    <div class="finding watch">
+      <div class="finding-head">
+        <div class="f-label watch">🟡 Watch</div>
+        <h4>AI agent comms: consuming apps will build AI assistants that need to send messages autonomously</h4>
+      </div>
+      <div class="finding-body">
+        <div class="signal">
+          <div class="row-label">Signal</div>
+          <p>PayPal acquired Cymbio to enable merchants to accept payments through AI agent interfaces including Microsoft Copilot, Perplexity, and ChatGPT. AI-driven retail traffic to US retail sites increased 4,700% in 2025. As KMV consuming apps build AI assistants (kaLunch's AI ordering assistant, Chapaa's AI savings advisor), those agents will want to send transactional messages on behalf of users. The agent is initiating the message, not the human.</p>
+        </div>
+        <div class="signal">
+          <div class="row-label amber">Relevance to Todoku</div>
+          <p>The current Todoku contract has no concept of an agent-initiated send. Todoku doesn't care who inside the app initiates the send call — it validates the app credential, not the initiating entity. This is acceptable at v1 because the app is responsible for all sends. But as agents become first-class actors inside consuming apps, Todoku's audit log should record an optional <code>initiated_by</code> field (matching the same field proposed for the step-up token). This enables cross-rail audit trail when a payment + notification was agent-initiated end to end.</p>
+        </div>
+        <span class="action-pill pill-add">Add — optional initiated_by field to SendMessageRequest schema</span>
+      </div>
+    </div>
+
+  </div><!-- /findings -->
+</div><!-- /section 3 -->
+
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- CROSS-RAIL IMPLICATIONS -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="cross-rail">
+  <h3>Cross-Rail Implications — Things That Touch All Three Simultaneously</h3>
+  <div class="cross-items">
+    <div class="cross-item">
+      <div class="ci-title">🔗 The initiated_by claim</div>
+      <p>All three rails should add an optional <code>initiated_by: "human" | "agent"</code> field — to the Kipkiren Pay payment request, the Identiti step-up token JWT, and the Todoku send request. This costs almost nothing at v1. When the CBK, ODPC, or CA-K asks to audit an agent-initiated payment + OTP + notification chain, the cross-rail audit log is already there. Without it, that reconstruction is impossible.</p>
+    </div>
+    <div class="cross-item">
+      <div class="ci-title">🎭 Deepfake social engineering targets the full payment loop</div>
+      <p>The highest-risk attack scenario is a coordinated deepfake that: (1) impersonates Identiti/KMV to collect an OTP via voice call (vishing), (2) uses the OTP to pass step-up at Kipkiren Pay, and (3) initiates a payout. Each individual rail has defences for its own surface. The cross-rail response is: explicit "KMV never calls you" copy in every OTP template, every step-up notification, and every payout confirmation — enforced at template approval time, not left to individual app copy.</p>
+    </div>
+    <div class="cross-item">
+      <div class="ci-title">📊 AI fraud monitoring needs cross-rail signal</div>
+      <p>Synthetic identity fraud that is dormant across Identiti, Kipkiren Pay, and Todoku simultaneously will not be detected by any single rail's monitoring. The cross-rail Kafka bus already carries identity, payment, and comms events. A platform-layer fraud signal aggregator — consuming events from all three rails — is the right architectural response. This is not a v1 build item, but it should be on the Platform Architecture Overview roadmap so the Kafka topology is designed to support it.</p>
+    </div>
+    <div class="cross-item">
+      <div class="ci-title">⚖️ Regulatory alignment: "trust-by-design" is the 2026 regulator frame</div>
+      <p>EY's 2026 Global Financial Services Regulatory Outlook notes that "trust-by-design" controls are becoming gating requirements for real-time money movement globally. CBK's sandbox approach is progressive, but the post-authorisation regime will ask: what controls govern agent-initiated transactions? KMV is ahead of this curve — but should document it explicitly in the CBK pre-application materials rather than treating it as a future problem.</p>
+    </div>
+    <div class="cross-item">
+      <div class="ci-title">💼 DPA 2019 + agentic AI = new DPIA trigger</div>
+      <p>When agents make automated decisions about identity verification (Identiti), payment authorisation (Kipkiren Pay), and message delivery (Todoku) without human review, each of those automated decisions may constitute a "solely automated decision with significant effects" under DPA 2019 Section 31. The ODPC registration DPIAs need to address this explicitly — counsel engagement should cover the agentic AI dimension, not just the standard biometric data processing questions.</p>
+    </div>
+    <div class="cross-item">
+      <div class="ci-title">🚀 African fintech VC is back — KMV is timed well</div>
+      <p>African fintech startups raised $187.1M in Q1 2026 — a 400% QoQ increase in deal value. PitchBook notes this puts 2026 on track for the highest annual total since 2023. AI accounted for 58% of all fintech VC in 2025. QED Investors specifically flags "AI purpose-built for regulated environments — auditable, controllable, safe" as underhyped. KMV's platform rails — with template-only content controls, hardware-key operators, IPRS-backed KYC, and SIMjacker-rejecting comms — are the exact posture that VC is describing as the gap in the market.</p>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- DESIGN RESPONSES -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-icon">🛠️</div>
+    <div>
+      <div class="section-title">Recommended Design Responses — Prioritised</div>
+      <div class="section-sub">Add now / Watch / Defer — per rail. Green dot = add to v1.0 or v1.1 now. Amber = monitor. Grey = defer.</div>
+    </div>
+  </div>
+
+  <div class="responses-grid">
+
+    <div class="response-rail kp">
+      <div class="r-head kp">
+        <div class="r-rail">Kipkiren Pay</div>
+        <h4>Payment Rail Responses</h4>
+      </div>
+      <div class="r-body">
+        <div class="r-item"><div class="r-dot now"></div><span><strong>Add to v1.0:</strong> <code>initiated_by</code> optional claim on step-up JWT (1 field, backward-compatible)</span></div>
+        <div class="r-item"><div class="r-dot now"></div><span><strong>Add to v1.0:</strong> Anti-social-engineering copy mandatory in step-up notification templates ("KMV will never call you to request this code")</span></div>
+        <div class="r-item"><div class="r-dot now"></div><span><strong>Add to Build Readiness:</strong> AI fraud pattern monitoring as a Phase 1 checklist item (not deferred to Phase 2)</span></div>
+        <div class="r-item"><div class="r-dot watch"></div><span><strong>v1.1 roadmap:</strong> Agent delegation spec — credential type, scope of authority, frequency cap, revocation mechanism</span></div>
+        <div class="r-item"><div class="r-dot watch"></div><span><strong>CBK agenda item:</strong> Proactively raise agent-initiated payment authorisation at pre-application meeting</span></div>
+        <div class="r-item"><div class="r-dot watch"></div><span><strong>AML vendor criteria:</strong> Add behavioural pattern detection (not just rules-based) to the shortlist evaluation matrix</span></div>
+        <div class="r-item"><div class="r-dot defer"></div><span><strong>Defer:</strong> Full agent payment protocol (AMP-compatible) — monitor Ant AMP adoption, revisit at v1.2</span></div>
+      </div>
+    </div>
+
+    <div class="response-rail id">
+      <div class="r-head id">
+        <div class="r-rail">Identiti</div>
+        <h4>Identity Rail Responses</h4>
+      </div>
+      <div class="r-body">
+        <div class="r-item"><div class="r-dot now"></div><span><strong>Add to KYC vendor RFQ:</strong> Injection-attack detection (IAD) as a mandatory requirement alongside passive liveness — ISO 25456 / CEN/TS 18099 alignment</span></div>
+        <div class="r-item"><div class="r-dot now"></div><span><strong>Add to Rail Contract:</strong> Explicit authentication JWT TTL policy (recommend ≤ 1 hour for high-value session tokens)</span></div>
+        <div class="r-item"><div class="r-dot now"></div><span><strong>Add to contract:</strong> Document JIT identity posture explicitly — positions Identiti correctly against the emerging standards</span></div>
+        <div class="r-item"><div class="r-dot now"></div><span><strong>Add to Schema Appendix:</strong> <code>actor</code> claim on step-up JWT (agent-initiated flow support, backward-compatible)</span></div>
+        <div class="r-item"><div class="r-dot watch"></div><span><strong>v1.1 roadmap:</strong> Agent identity spec — agent registry, agent credential type, delegation chain primitive</span></div>
+        <div class="r-item"><div class="r-dot watch"></div><span><strong>v1.1 roadmap:</strong> CAEP real-time revocation endpoint for step-up tokens (supplement to expiry-only)</span></div>
+        <div class="r-item"><div class="r-dot watch"></div><span><strong>Counsel agenda:</strong> DPA 2019 automated decision-making (Section 31) coverage in DPIA — especially for biometric rejection appeals</span></div>
+        <div class="r-item"><div class="r-dot defer"></div><span><strong>Defer:</strong> Full continuous behavioural monitoring (post-onboarding) — include in biometric SDK spec, defer build to Stage 2</span></div>
+      </div>
+    </div>
+
+    <div class="response-rail td">
+      <div class="r-head td">
+        <div class="r-rail">Todoku</div>
+        <h4>Comms Rail Responses</h4>
+      </div>
+      <div class="r-body">
+        <div class="r-item"><div class="r-dot now"></div><span><strong>Add to contract:</strong> WhatsApp AI ToS compliance note — template-only posture is compliant with Meta Oct 2025 terms, document explicitly</span></div>
+        <div class="r-item"><div class="r-dot now"></div><span><strong>Add to template approval:</strong> Mandatory anti-phishing line in all class_0 OTP templates ("Do not share this code with anyone, including KMV staff")</span></div>
+        <div class="r-item"><div class="r-dot now"></div><span><strong>Add to template approval:</strong> Anti-vishing copy in all voice OTP templates + call-back number verification copy</span></div>
+        <div class="r-item"><div class="r-dot now"></div><span><strong>Add to Schema Appendix:</strong> Optional <code>initiated_by</code> field in SendMessageRequest (matches KP and Identiti claims)</span></div>
+        <div class="r-item"><div class="r-dot now"></div><span><strong>Add to envelope enforcement:</strong> Time-windowed velocity component to diversity check (not just ratio — velocity burst detection)</span></div>
+        <div class="r-item"><div class="r-dot watch"></div><span><strong>Watch:</strong> COMESA probe outcome — if Meta loses, WhatsApp API terms may change materially. Monitor quarterly.</span></div>
+        <div class="r-item"><div class="r-dot watch"></div><span><strong>Ops playbook:</strong> Sender ID spoofing monitoring — detect and respond when a KMV brand sender ID is being impersonated via third-party aggregators</span></div>
+        <div class="r-item"><div class="r-dot watch"></div><span><strong>Ops playbook:</strong> Anomalous recipient pattern alert + API key compromise response procedure</span></div>
+        <div class="r-item"><div class="r-dot defer"></div><span><strong>Defer:</strong> Consumer-facing message verification service (e.g., "verify this SMS came from KMV") — technically feasible, product/UX decision for Stage 2</span></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- VC / MARKET SIGNAL -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-icon">📈</div>
+    <div>
+      <div class="section-title">VC / Market Signal — Where the Money Is Moving</div>
+      <div class="section-sub">Relevant investment trends and what they mean for KMV positioning</div>
+    </div>
+  </div>
+
+  <div class="vc-grid">
+    <div class="vc-card">
+      <div class="vc-n">58%</div>
+      <div class="vc-l">AI share of all fintech VC, 2025</div>
+      <div class="vc-d">Silicon Valley Bank. AI is pulling in more capital than any other fintech category. Infrastructure layers are the focus.</div>
+    </div>
+    <div class="vc-card">
+      <div class="vc-n">$187M</div>
+      <div class="vc-l">African fintech raised in Q1 2026</div>
+      <div class="vc-d">PitchBook. +400% QoQ. On track for highest annual total since 2023. Payments infrastructure is historically the strongest vertical.</div>
+    </div>
+    <div class="vc-card">
+      <div class="vc-n">$28B</div>
+      <div class="vc-l">Projected agentic commerce market by 2030</div>
+      <div class="vc-d">Ant International / BusinessWire. 46% CAGR. Kipkiren Pay's agent delegation model is the infrastructure this market needs.</div>
+    </div>
+    <div class="vc-card">
+      <div class="vc-n">QED</div>
+      <div class="vc-l">2026 prediction: "AI purpose-built for regulated environments is underhyped"</div>
+      <div class="vc-d">QED Investors. Auditable, controllable, safe. KMV's template-only comms, hardware-key operators, and IPRS-backed KYC are exactly this posture.</div>
+    </div>
+  </div>
+
+  <div style="margin-top:14px;background:var(--teal-l);border:1px solid #C2DDD9;border-radius:8px;padding:14px 16px">
+    <div style="font-size:8px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--teal);margin-bottom:6px">KMV Positioning Implication</div>
+    <p style="font-size:9px;color:var(--mid);line-height:1.6">The convergence of three signals — (1) African fintech VC is back and infrastructure-focused, (2) AI accounted for 58% of global fintech VC, and (3) QED specifically calling out auditable regulated-environment AI as underhyped — means KMV is building in exactly the gap the market is pointing to. The recommended additions from this scan (IAD requirement on Identiti's KYC vendor RFQ, agent delegation on KP's v1.1 roadmap, initiated_by claims across all three rails) are not just security improvements — they are investor-grade signals that KMV is thinking at the frontier. The investor one-pagers should be updated to reference the agentic AI posture as part of the platform thesis.</p>
+  </div>
+</div>
+
+</div><!-- /body -->
+
+<!-- FOOTER -->
+<div class="footer">
+  <div class="disc">Sources: IMF Notes 2026, Ant International AMP launch (Apr 2026), Sumsub Identity Fraud Report 2025–2026, CSA Agentic AI Addendum (Oct 2025), IMDA Model Governance Framework (Jan 2026), EY Global Financial Services Regulatory Outlook 2026, QED Investors 2026 Predictions, PitchBook Q1 2026 African Fintech, WEF Cybercrime Atlas (Jan 2026), COMESA CCPC investigation into Meta (Feb 2026), WhatsApp Business Solution Terms (Oct 2025), KE-CIRT/CC Q1 2025 report, Fenwick Agentic Payments (Apr 2026), FINRA 2026 Regulatory Oversight Report, Strata/CSA identity research (Apr 2026). All findings based on publicly available sources as of 4 May 2026.</div>
+  <div class="brand">KMV Platform Rails · May 2026</div>
+</div>
+
+</body>
+</html>

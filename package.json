@@ -1,0 +1,53 @@
+{
+  "name": "@kmv/helpan-ai-rail",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Helpan AI — agent rail for the KMV platform: orchestration runtime, delegated authority issuance/validation/revocation, consent surface, audit, OAuth scope catalogue.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "dev": "tsx watch --env-file=.env src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "worker:webhooks": "tsx --env-file=.env src/workers/webhookDelivery/index.ts",
+    "worker:webhooks:start": "node dist/workers/webhookDelivery/index.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint \"src/**/*.ts\" \"test/**/*.ts\"",
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:integration": "vitest run test/integration",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx --env-file=.env scripts/migrate.ts",
+    "db:check": "drizzle-kit check",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "@fastify/sensible": "^5.6.0",
+    "@kmv/platform-shared": "file:./vendor/platform-shared",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "drizzle-orm": "^0.36.4",
+    "fastify": "^4.28.1",
+    "fastify-plugin": "^4.5.1",
+    "jose": "^5.9.6",
+    "kafkajs": "^2.2.4",
+    "pino": "^9.5.0",
+    "postgres": "^3.4.5",
+    "ulid": "^2.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "@typescript-eslint/eslint-plugin": "^8.14.0",
+    "@typescript-eslint/parser": "^8.14.0",
+    "drizzle-kit": "^0.28.1",
+    "eslint": "^9.14.0",
+    "prettier": "^3.3.3",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4"
+  }
+}

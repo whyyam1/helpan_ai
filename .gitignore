@@ -1,0 +1,33 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# build output — root-anchored so the vendored platform-shared dist
+# (vendor/platform-shared/dist) is committed and Railway can build without
+# the sibling platform-shared checkout.
+/dist/
+*.tsbuildinfo
+
+# env / secrets
+.env
+.env.local
+.env.*.local
+
+# test / coverage
+coverage/
+.vitest-cache/
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# editor
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# drizzle generated artefacts that should not drift into commits
+src/db/migrations/meta/_drift.tmp

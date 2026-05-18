@@ -1,0 +1,1751 @@
+openapi: 3.1.0
+info:
+  title: Helpan AI Rail
+  version: '1.0.0'
+  summary: Agent rail for the Kirimon Market Ventures platform — orchestration runtime, delegated authority, consent surface, and audit for AI agents acting on behalf of users across Kipkiren Pay, Identiti, and Todoku.
+  description: |
+    Helpan AI is the **fourth platform rail** in the Kirimon Market Ventures (KMV) stack, alongside
+    Identiti (identity), Kipkiren Pay (payment), and Todoku (comms). It provides the agent orchestration
+    runtime, briefing storage, matching engine, delegated authority issuance/validation/revocation, the
+    Helpan Console consent surface, audit log, and OAuth scope catalogue for third-party agents.
+
+    Per design law (Helpan AI Instruction Pack §3) and the Agentic AI Signal Scan integration (7 May 2026):
+    - Helpan AI does NOT hold funds, send messages, or store identity material. Every primitive that
+      belongs to KP, Identiti, or Todoku is invoked via the relevant rail's API.
+    - Every agent action carries a scoped, time-bounded, revocable **delegated authority token**.
+    - Every issued delegated authority is visible in the Helpan Console with one-tap revocation.
+    - Per-call validation of delegated authorities against this rail's `POST /authorities/{id}/validate`
+      endpoint is mandatory for relying parties (KP, Todoku, consuming-app servers).
+    - `initiated_by` and `actor` claims propagate cross-rail per Schema Appendix amendments §A on
+      Identiti, Kipkiren Pay, and Todoku rail contracts.
+
+    **Authoritative source documents:** Helpan AI Rail Design Instruction Pack v1.0; DoD/MVP v1.0;
+    Design Reference v1.0 + Amendment §A; Confirmation Memo v1.0 + Amendment §A; Scan Integration
+    Memo v1.0; Agentic AI Signal Scan (4 May 2026).
+  termsOfService: 'https://docs.helpan.co.ke/terms'
+  contact:
+    name: KMV Platform Engineering
+    email: platform-eng@kirimon.co.ke
+  license:
+    name: Confidential — KMV proprietary
+
+servers:
+  - url: 'https://sandbox.helpan.co.ke/v1'
+    description: Stage 1 sandbox
+  - url: 'https://pre.helpan.co.ke/v1'
+    description: Stage 2 pre-CBK production-grade (restricted)
+  - url: 'https://api.helpan.co.ke/v1'
+    description: Stage 3 production
+
+tags:
+  - name: Health
+    description: Liveness and deep-health endpoints
+  - name: Briefings
+    description: User-issued briefings — standing intents the agent acts on
+  - name: Authorities
+    description: Delegated authority tokens — scoped, time-bounded, revocable agent permissions
+  - name: Actions
+    description: Agent action dispatch and audit
+  - name: Events
+    description: Event ingestion from consuming apps for matching engine
+  - name: OAuth
+    description: Third-party agent OAuth scope catalogue
+  - name: Console
+    description: Helpan Console — consent surface read endpoints (used by the shared library)
+  - name: Operator
+    description: Operator-only endpoints (not for consuming apps or third-party agents)
+
+# ============================================================================
+# SECURITY
+# ============================================================================
+security:
+  - HmacSha256: []
+  - BearerCustomer: []
+  - BearerService: []
+
+paths:
+  # ==========================================================================
+  # HEALTH
+  # ==========================================================================
+  /health:
+    get:
+      tags: [Health]
+      summary: Liveness check (unauthenticated)
+      operationId: getHealth
+      security: []
+      responses:
+        '200':
+          description: Rail is operational
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /health/deep:
+    get:
+      tags: [Health]
+      summary: Deep health (authenticated; Operator scope)
+      operationId: getHealthDeep
+      security:
+        - HmacSha256: [operator:read]
+      responses:
+        '200':
+          description: Deep health status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeepHealthResponse'
+        '401':
+          $ref: '#/components/responses/AuthHmacInvalid'
+
+  # ==========================================================================
+  # BRIEFINGS
+  # ==========================================================================
+  /briefings:
+    post:
+      tags: [Briefings]
+      summary: Create a briefing on the user's behalf
+      operationId: createBriefing
+      parameters:
+        - $ref: '#/components/parameters/XIdempotencyKey'
+        - $ref: '#/components/parameters/Traceparent'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBriefingRequest'
+      responses:
+        '201':
+          description: Briefing created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BriefingResponse'
+        '400':
+          $ref: '#/components/responses/RequestInvalid'
+        '401':
+          $ref: '#/components/responses/AuthHmacInvalid'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/IdempotencyConflict'
+        '429':
+          $ref: '#/components/responses/RateExceeded'
+
+    get:
+      tags: [Briefings]
+      summary: List the authenticated user's briefings (filtered by app and status)
+      operationId: listBriefings
+      parameters:
+        - name: app_id
+          in: query
+          schema: { type: string }
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, paused, expired, revoked]
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 50, maximum: 200 }
+      responses:
+        '200':
+          description: Briefings list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BriefingListResponse'
+        '401':
+          $ref: '#/components/responses/AuthHmacInvalid'
+
+  /briefings/{briefing_id}:
+    parameters:
+      - $ref: '#/components/parameters/BriefingId'
+    get:
+      tags: [Briefings]
+      summary: Read a single briefing
+      operationId: getBriefing
+      responses:
+        '200':
+          description: Briefing detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BriefingResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      tags: [Briefings]
+      summary: Update a briefing (mutable fields only)
+      operationId: updateBriefing
+      parameters:
+        - $ref: '#/components/parameters/XIdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateBriefingRequest'
+      responses:
+        '200':
+          description: Briefing updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BriefingResponse'
+        '400':
+          $ref: '#/components/responses/RequestInvalid'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [Briefings]
+      summary: Revoke a briefing (soft-delete; audit-logged)
+      operationId: revokeBriefing
+      parameters:
+        - $ref: '#/components/parameters/XIdempotencyKey'
+      responses:
+        '204':
+          description: Briefing revoked
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ==========================================================================
+  # DELEGATED AUTHORITIES
+  # ==========================================================================
+  /authorities:
+    post:
+      tags: [Authorities]
+      summary: Issue a delegated authority token (user-initiated, in-app)
+      operationId: issueAuthority
+      description: |
+        Issues a scoped, time-bounded, revocable delegated authority token. The user is in-session
+        and explicitly authorising the agent to act on a specified scope (data category, operation,
+        spend limit, time window).
+
+        For high-stakes scopes (money-touching, identity-sensitive), this endpoint requires a
+        step-up token from Identiti in the request body. Per Confirmation Memo §5.9 and Identiti
+        Schema Appendix Amendment §A, the step-up JWT carries the `actor` claim distinguishing
+        subject from actor; this rail propagates the claim into the issued delegated authority's
+        own JWT.
+      parameters:
+        - $ref: '#/components/parameters/XIdempotencyKey'
+        - $ref: '#/components/parameters/Traceparent'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueAuthorityRequest'
+      responses:
+        '201':
+          description: Authority issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthorityResponse'
+        '400':
+          $ref: '#/components/responses/RequestInvalid'
+        '401':
+          description: Step-up required or invalid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+    get:
+      tags: [Authorities]
+      summary: List active delegated authorities for the authenticated user (powers the Helpan Console)
+      operationId: listAuthorities
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, expired, revoked]
+        - name: agent_id
+          in: query
+          schema: { type: string }
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 50, maximum: 200 }
+      responses:
+        '200':
+          description: Authorities list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthorityListResponse'
+
+  /authorities/{authority_id}:
+    parameters:
+      - $ref: '#/components/parameters/AuthorityId'
+    get:
+      tags: [Authorities]
+      summary: Read a single authority detail
+      operationId: getAuthority
+      responses:
+        '200':
+          description: Authority detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthorityResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /authorities/{authority_id}/revoke:
+    parameters:
+      - $ref: '#/components/parameters/AuthorityId'
+    post:
+      tags: [Authorities]
+      summary: Revoke a delegated authority (immediate; propagates to relying parties)
+      operationId: revokeAuthority
+      description: |
+        Revocation is **immediate**. The revocation propagates to relying parties via:
+        1. Synchronous: future `POST /authorities/{id}/validate` calls return `revoked=true`.
+        2. Asynchronous (v1.0): Kafka event `helpan.authority.events` with `AUTHORITY_REVOKED`.
+        3. **CAEP push-revocation**: v1.1 roadmap (per Identiti Rail Contract Amendment §A.5).
+
+        Relying parties (Kipkiren Pay, Todoku) must validate per call (60-second positive cache,
+        **no negative cache**) so revocation is reflected within at most 60 seconds for poll-based
+        validation. v1.1 CAEP cuts this to <5 seconds.
+      parameters:
+        - $ref: '#/components/parameters/XIdempotencyKey'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RevokeAuthorityRequest'
+      responses:
+        '200':
+          description: Revoked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthorityResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Already revoked or expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /authorities/{authority_id}/validate:
+    parameters:
+      - $ref: '#/components/parameters/AuthorityId'
+    post:
+      tags: [Authorities]
+      summary: Validate a delegated authority (relying-party endpoint)
+      operationId: validateAuthority
+      description: |
+        Called by relying parties (Kipkiren Pay, Todoku) on every agent-dispatched call that
+        carries the `X-Delegated-Authority` header. Returns the authority's current status,
+        scope, and limits so the relying party can enforce.
+
+        **Caching guidance:** 60-second positive cache (status='active') is permitted.
+        **No negative caching** of revoked/expired status is permitted — relying parties must
+        re-validate.
+
+        **Authentication:** HMAC-SHA-256 with the relying-party rail's app credentials, scoped
+        with `helpan:authority:validate`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValidateAuthorityRequest'
+      responses:
+        '200':
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidateAuthorityResponse'
+        '401':
+          $ref: '#/components/responses/AuthHmacInvalid'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ==========================================================================
+  # ACTIONS — agent action dispatch
+  # ==========================================================================
+  /actions/dispatch:
+    post:
+      tags: [Actions]
+      summary: Dispatch an agent action through Helpan AI to the appropriate rail
+      operationId: dispatchAction
+      description: |
+        The agent submits a structured intent. Helpan AI:
+        1. Validates the `X-Delegated-Authority` header against `/authorities/{id}/validate`.
+        2. Checks the authority's scope covers the requested operation and amount/limit.
+        3. Routes to the appropriate platform rail (KP for money, Todoku for comms).
+        4. Records the dispatch in the audit log with `actor`, `initiated_by`, and traceparent.
+        5. Returns the action result envelope.
+
+        Per cardinal rule (§3.1) Helpan AI never executes the action itself — every dispatch is
+        a call to the appropriate rail.
+      parameters:
+        - $ref: '#/components/parameters/XIdempotencyKey'
+        - $ref: '#/components/parameters/XDelegatedAuthority'
+        - $ref: '#/components/parameters/Traceparent'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DispatchActionRequest'
+      responses:
+        '200':
+          description: Action dispatched and completed synchronously
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResponse'
+        '202':
+          description: Action accepted; result delivered via webhook + GET /actions/{id}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResponse'
+        '400':
+          $ref: '#/components/responses/RequestInvalid'
+        '401':
+          description: Delegated authority invalid, expired, or revoked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '403':
+          description: Scope does not cover requested operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          description: Operation rejected by downstream rail (tier limit, insufficient funds, etc.)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          $ref: '#/components/responses/RateExceeded'
+
+  /actions:
+    get:
+      tags: [Actions]
+      summary: List actions for the authenticated user (powers the Helpan Console activity log)
+      operationId: listActions
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, completed, failed]
+        - name: agent_id
+          in: query
+          schema: { type: string }
+        - name: target_rail
+          in: query
+          schema:
+            type: string
+            enum: [kipkiren_pay, identiti, todoku]
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 50, maximum: 200 }
+      responses:
+        '200':
+          description: Actions list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionListResponse'
+
+  /actions/{action_id}:
+    parameters:
+      - $ref: '#/components/parameters/ActionId'
+    get:
+      tags: [Actions]
+      summary: Read a single action (status, result, audit detail)
+      operationId: getAction
+      responses:
+        '200':
+          description: Action detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ==========================================================================
+  # EVENTS — matching engine ingestion
+  # ==========================================================================
+  /events/ingest:
+    post:
+      tags: [Events]
+      summary: Publish an event for matching against user briefings
+      operationId: ingestEvent
+      description: |
+        Consuming apps publish domain events that may match user briefings (e.g. Lunch Drop
+        publishes "PowerMama X is offering today's special"). Helpan AI matches events against
+        active briefings and emits `BriefingMatched` events on the platform Kafka bus, which the
+        consuming app consumes to surface to the user.
+      parameters:
+        - $ref: '#/components/parameters/XIdempotencyKey'
+        - $ref: '#/components/parameters/Traceparent'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IngestEventRequest'
+      responses:
+        '202':
+          description: Event accepted for matching
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IngestEventResponse'
+        '400':
+          $ref: '#/components/responses/RequestInvalid'
+        '429':
+          $ref: '#/components/responses/RateExceeded'
+
+  # ==========================================================================
+  # OAUTH — third-party agent scope catalogue
+  # ==========================================================================
+  /oauth/scopes:
+    get:
+      tags: [OAuth]
+      summary: List available OAuth scopes (third-party agent registration uses this)
+      operationId: listOauthScopes
+      security: []
+      parameters:
+        - name: rail
+          in: query
+          schema:
+            type: string
+            enum: [helpan, kipkiren_pay, identiti, todoku, lunchdrop, chapaa, klokd]
+      responses:
+        '200':
+          description: OAuth scope catalogue
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OauthScopeListResponse'
+
+    post:
+      tags: [OAuth]
+      summary: Define a new OAuth scope (admin only)
+      operationId: createOauthScope
+      security:
+        - HmacSha256: [helpan:admin]
+      parameters:
+        - $ref: '#/components/parameters/XIdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOauthScopeRequest'
+      responses:
+        '201':
+          description: Scope created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OauthScopeResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  # ==========================================================================
+  # OPERATOR — admin endpoints (FIDO2/WebAuthn auth required per Reboot Pack §10)
+  # ==========================================================================
+  /operator/agents:
+    post:
+      tags: [Operator]
+      summary: Register an agent (consuming-app branded agent or third-party)
+      operationId: registerAgent
+      security:
+        - HmacSha256: [helpan:admin]
+      parameters:
+        - $ref: '#/components/parameters/XIdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterAgentRequest'
+      responses:
+        '201':
+          description: Agent registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentResponse'
+
+  /operator/agents/{agent_id}:
+    parameters:
+      - $ref: '#/components/parameters/AgentId'
+    get:
+      tags: [Operator]
+      summary: Read agent detail (operator)
+      operationId: getAgent
+      security:
+        - HmacSha256: [helpan:admin]
+      responses:
+        '200':
+          description: Agent detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentResponse'
+
+    patch:
+      tags: [Operator]
+      summary: Update agent status (suspend/reactivate)
+      operationId: updateAgentStatus
+      security:
+        - HmacSha256: [helpan:admin]
+      parameters:
+        - $ref: '#/components/parameters/XIdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAgentStatusRequest'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentResponse'
+
+  /operator/safety-policies:
+    get:
+      tags: [Operator]
+      summary: List per-app safety policies
+      operationId: listSafetyPolicies
+      security:
+        - HmacSha256: [helpan:admin]
+      responses:
+        '200':
+          description: Safety policies
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SafetyPolicyListResponse'
+
+  /operator/safety-policies/{policy_id}:
+    parameters:
+      - $ref: '#/components/parameters/PolicyId'
+    put:
+      tags: [Operator]
+      summary: Update per-app safety policy (category whitelist, content moderation rules)
+      operationId: updateSafetyPolicy
+      security:
+        - HmacSha256: [helpan:admin]
+      parameters:
+        - $ref: '#/components/parameters/XIdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SafetyPolicy'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SafetyPolicyResponse'
+
+  /operator/audit:
+    get:
+      tags: [Operator]
+      summary: Audit log (operator console)
+      operationId: getAuditLog
+      security:
+        - HmacSha256: [helpan:admin]
+      parameters:
+        - name: account_uuid
+          in: query
+          schema: { type: string }
+        - name: agent_id
+          in: query
+          schema: { type: string }
+        - name: action
+          in: query
+          schema: { type: string }
+        - name: from
+          in: query
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          schema: { type: string, format: date-time }
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 100, maximum: 500 }
+      responses:
+        '200':
+          description: Audit entries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditLogListResponse'
+
+# ============================================================================
+# COMPONENTS
+# ============================================================================
+components:
+
+  # --------------------------------------------------------------------------
+  # SECURITY SCHEMES
+  # --------------------------------------------------------------------------
+  securitySchemes:
+    HmacSha256:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: |
+        Format: `Helpan-HMAC-SHA256 app_id={app_id}, signature={base64_sig}`.
+        Canonical string (identical across all four rails per App Integration Guide §5.7):
+        `{METHOD}\n{PATH_AND_QUERY}\n{CONTENT_TYPE}\n{X-Helpan-Timestamp}\n{SHA256_HEX(body)}`.
+        mTLS additionally required at the transport layer.
+
+    BearerCustomer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Identiti-issued customer JWT. Audience must include this rail's audience
+        (`https://api.helpan.co.ke`). Carries `sub` (Account UUID), `tier`, `actor`,
+        `initiated_by`, `auth_factors`, `exp`. Per Identiti Rail Contract Amendment §A.4:
+        30-min standard / 5-min elevated TTL.
+
+    BearerService:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Identiti-issued service JWT for service-to-service authentication
+        (consuming-app servers calling Helpan AI on behalf of the user). 15-min standard /
+        5-min elevated TTL per Identiti Rail Contract Amendment §A.4.
+
+  # --------------------------------------------------------------------------
+  # PARAMETERS
+  # --------------------------------------------------------------------------
+  parameters:
+    XAppId:
+      name: X-App-Id
+      in: header
+      required: true
+      schema: { type: string, pattern: '^[a-z0-9_]{2,40}$' }
+      description: The calling app's stable identifier (e.g. `kalunch`, `chapaa`).
+
+    XIdempotencyKey:
+      name: X-Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string, format: uuid }
+      description: |
+        UUIDv4 per logical operation. Apps SHOULD use the UUIDv5-from-business-op-id pattern
+        per App Integration Guide §7.6. 24-hour idempotency window.
+
+    XHelpanTimestamp:
+      name: X-Helpan-Timestamp
+      in: header
+      required: true
+      schema: { type: string, format: date-time }
+      description: RFC 3339 UTC timestamp at request signing time. ±300-second tolerance.
+
+    XDelegatedAuthority:
+      name: X-Delegated-Authority
+      in: header
+      required: true
+      schema: { type: string }
+      description: |
+        The delegated authority JWT (issued by `POST /authorities`) authorising this agent
+        action. **Required on `/actions/dispatch` and on relying-party calls** (KP / Todoku
+        when invoked through Helpan AI's dispatch path). Helpan AI validates per call against
+        the authority's status; relying parties validate via `POST /authorities/{id}/validate`.
+
+    Traceparent:
+      name: Traceparent
+      in: header
+      required: false
+      schema: { type: string, pattern: '^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$' }
+      description: W3C Trace Context. Propagate unchanged across rails for cross-rail correlation.
+
+    XRequestId:
+      name: X-Request-Id
+      in: header
+      required: false
+      schema: { type: string }
+      description: Optional ULID for app-side request correlation; echoed in response `meta.request_id`.
+
+    BriefingId:
+      name: briefing_id
+      in: path
+      required: true
+      schema: { type: string, pattern: '^brf_[0-9A-HJKMNP-TV-Z]{26}$' }
+      description: Briefing identifier (`brf_<ULID>`).
+
+    AuthorityId:
+      name: authority_id
+      in: path
+      required: true
+      schema: { type: string, pattern: '^daa_[0-9A-HJKMNP-TV-Z]{26}$' }
+      description: Delegated-authority identifier (`daa_<ULID>`). Same value as the JWT `jti` claim.
+
+    ActionId:
+      name: action_id
+      in: path
+      required: true
+      schema: { type: string, pattern: '^act_[0-9A-HJKMNP-TV-Z]{26}$' }
+      description: Action identifier (`act_<ULID>`).
+
+    AgentId:
+      name: agent_id
+      in: path
+      required: true
+      schema: { type: string, pattern: '^agt_[0-9A-HJKMNP-TV-Z]{26}$' }
+
+    PolicyId:
+      name: policy_id
+      in: path
+      required: true
+      schema: { type: string, pattern: '^sfp_[0-9A-HJKMNP-TV-Z]{26}$' }
+
+  # --------------------------------------------------------------------------
+  # SCHEMAS
+  # --------------------------------------------------------------------------
+  schemas:
+
+    # ---- envelope ----------------------------------------------------------
+    Meta:
+      type: object
+      required: [request_id, timestamp, schema_version]
+      properties:
+        request_id:
+          type: string
+          description: ULID
+        timestamp:
+          type: string
+          format: date-time
+        schema_version:
+          type: string
+          enum: ['1.0']
+
+    SuccessEnvelope:
+      type: object
+      required: [ok, data, meta]
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        data:
+          description: Operation-specific payload
+        meta:
+          $ref: '#/components/schemas/Meta'
+
+    ErrorEnvelope:
+      type: object
+      required: [ok, error, meta]
+      properties:
+        ok:
+          type: boolean
+          enum: [false]
+        error:
+          $ref: '#/components/schemas/ErrorBody'
+        meta:
+          $ref: '#/components/schemas/Meta'
+
+    ErrorBody:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: Stable machine-readable error code (e.g. `AUTH_HMAC_INVALID`)
+        message:
+          type: string
+          description: Human-readable; not stable across versions
+        field:
+          type: string
+          nullable: true
+        detail:
+          type: object
+          additionalProperties: true
+        documentation_url:
+          type: string
+          format: uri
+
+    # ---- shared atoms ------------------------------------------------------
+    InitiatedBy:
+      type: string
+      enum: [human, agent, system]
+      description: |
+        Originating entity class. Cross-rail per Schema Appendix amendments §A on Identiti, KP,
+        and Todoku rail contracts.
+
+    Actor:
+      type: object
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [human, agent]
+        agent_id:
+          type: string
+          pattern: '^agt_[0-9A-HJKMNP-TV-Z]{26}$'
+          description: Required when type='agent'
+        delegated_authority_jti:
+          type: string
+          pattern: '^daa_[0-9A-HJKMNP-TV-Z]{26}$'
+          description: Required when type='agent' — the delegated authority that authorised this action
+      description: |
+        The executing entity. Distinct from `sub`/Account UUID (the delegating user). Per Identiti
+        Schema Appendix Amendment §A.1 — implements the subject-vs-actor distinction emerging in
+        CSA / IMDA / OAuth 2.1 standards.
+
+    AccountUuid:
+      type: string
+      pattern: '^acc_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+
+    KesMinorUnits:
+      type: integer
+      minimum: 0
+      description: KES minor units (fils). Integer only. No floating-point. Per Reboot Pack §9.2.
+
+    # ---- briefings ---------------------------------------------------------
+    BriefingType:
+      type: string
+      enum: [alert, standing_basket, scheduled_action, threshold_watch]
+
+    BriefingStatus:
+      type: string
+      enum: [active, paused, expired, revoked]
+
+    Briefing:
+      type: object
+      required: [id, account_uuid, app_id, briefing_type, status, intent, created_at]
+      properties:
+        id:
+          type: string
+          pattern: '^brf_[0-9A-HJKMNP-TV-Z]{26}$'
+        account_uuid:
+          $ref: '#/components/schemas/AccountUuid'
+        app_id:
+          type: string
+        agent_id:
+          type: string
+          pattern: '^agt_[0-9A-HJKMNP-TV-Z]{26}$'
+        briefing_type:
+          $ref: '#/components/schemas/BriefingType'
+        status:
+          $ref: '#/components/schemas/BriefingStatus'
+        intent:
+          type: object
+          additionalProperties: true
+          description: Structured intent — schema varies by app and briefing_type
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateBriefingRequest:
+      type: object
+      required: [account_uuid, app_id, briefing_type, intent]
+      properties:
+        account_uuid: { $ref: '#/components/schemas/AccountUuid' }
+        app_id: { type: string }
+        agent_id:
+          type: string
+          pattern: '^agt_[0-9A-HJKMNP-TV-Z]{26}$'
+        briefing_type: { $ref: '#/components/schemas/BriefingType' }
+        intent:
+          type: object
+          additionalProperties: true
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    UpdateBriefingRequest:
+      type: object
+      properties:
+        status: { $ref: '#/components/schemas/BriefingStatus' }
+        intent:
+          type: object
+          additionalProperties: true
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    BriefingResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/Briefing'
+
+    BriefingListResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [items]
+              properties:
+                items:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Briefing'
+                next_cursor:
+                  type: string
+                  nullable: true
+
+    # ---- delegated authorities ---------------------------------------------
+    AuthorityScope:
+      type: object
+      required: [scope_id]
+      properties:
+        scope_id:
+          type: string
+          description: 'OAuth scope identifier (e.g. `kipkiren.write.payments`, `chapaa.mmf.rebalance`)'
+        amount_limit_minor:
+          $ref: '#/components/schemas/KesMinorUnits'
+        per_period_limit_minor:
+          $ref: '#/components/schemas/KesMinorUnits'
+        period:
+          type: string
+          enum: [single_use, daily, weekly, monthly]
+        category_whitelist:
+          type: array
+          items: { type: string }
+        recipient_whitelist:
+          type: array
+          items: { type: string }
+          description: For comms scopes — restricted set of recipient phone-token JTIs
+
+    AuthorityStatus:
+      type: string
+      enum: [active, expired, revoked]
+
+    Authority:
+      type: object
+      required: [id, account_uuid, agent_id, scopes, status, expires_at, created_at]
+      properties:
+        id:
+          type: string
+          pattern: '^daa_[0-9A-HJKMNP-TV-Z]{26}$'
+          description: Same value as JWT `jti` claim
+        account_uuid:
+          $ref: '#/components/schemas/AccountUuid'
+        agent_id:
+          type: string
+          pattern: '^agt_[0-9A-HJKMNP-TV-Z]{26}$'
+        scopes:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuthorityScope'
+        status:
+          $ref: '#/components/schemas/AuthorityStatus'
+        token:
+          type: string
+          description: |
+            JWT (RS256, signed by Identiti on Helpan AI's behalf). Carried in the
+            `X-Delegated-Authority` header on subsequent agent dispatch calls.
+            Returned only on issuance; not returned by GET endpoints.
+        expires_at:
+          type: string
+          format: date-time
+        revoked_at:
+          type: string
+          format: date-time
+          nullable: true
+        revocation_reason:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    IssueAuthorityRequest:
+      type: object
+      required: [account_uuid, agent_id, scopes, ttl_seconds]
+      properties:
+        account_uuid: { $ref: '#/components/schemas/AccountUuid' }
+        agent_id:
+          type: string
+          pattern: '^agt_[0-9A-HJKMNP-TV-Z]{26}$'
+        scopes:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/AuthorityScope'
+        ttl_seconds:
+          type: integer
+          minimum: 60
+          maximum: 86400
+          description: |
+            Lifetime in seconds. Defaults: money-touching scopes ≤3600 (1 hour); identity-sensitive
+            ≤900 (15 min); read-only ≤86400 (24 hours). Issuer enforces per-scope max.
+        step_up_token:
+          type: string
+          description: |
+            Required for high-stakes scopes (any money-touching, identity-sensitive, or
+            single-use elevated-amount scope). RS256 JWT issued by Identiti per its Schema
+            Appendix Amendment §A.1 with `actor.type='agent'` and `actor.agent_id` matching
+            the request.
+
+    AuthorityResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/Authority'
+
+    AuthorityListResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [items]
+              properties:
+                items:
+                  type: array
+                  items:
+                    allOf:
+                      - $ref: '#/components/schemas/Authority'
+                      - description: 'Note: `token` field is omitted from list responses for security.'
+                next_cursor:
+                  type: string
+                  nullable: true
+
+    RevokeAuthorityRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          enum:
+            - user_initiated
+            - operator_initiated
+            - account_suspended
+            - kyc_downgraded
+            - cascade_user_deleted
+            - cascade_consent_revoked
+            - security_incident
+            - other
+        detail:
+          type: string
+
+    ValidateAuthorityRequest:
+      type: object
+      required: [token, intended_operation]
+      properties:
+        token:
+          type: string
+          description: The JWT from `X-Delegated-Authority` header
+        intended_operation:
+          type: string
+          description: 'The operation the relying party intends to execute (e.g. `kipkiren_pay.payment.execute`, `todoku.message.send`)'
+        amount_minor:
+          $ref: '#/components/schemas/KesMinorUnits'
+          description: For money-touching operations — the requested amount, used for limit check
+
+    ValidateAuthorityResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [valid, status, scope_covers, within_limits]
+              properties:
+                valid:
+                  type: boolean
+                status:
+                  $ref: '#/components/schemas/AuthorityStatus'
+                scope_covers:
+                  type: boolean
+                  description: Does the authority's scope cover the `intended_operation`?
+                within_limits:
+                  type: boolean
+                  description: Is the requested amount within the authority's amount and per-period limits?
+                authority:
+                  $ref: '#/components/schemas/Authority'
+                  description: Authority detail (token field omitted)
+                rejection_reason:
+                  type: string
+                  nullable: true
+                  enum:
+                    - null
+                    - token_invalid_signature
+                    - token_expired
+                    - token_revoked
+                    - scope_not_covered
+                    - amount_exceeds_limit
+                    - period_limit_exhausted
+                    - account_suspended
+
+    # ---- actions -----------------------------------------------------------
+    TargetRail:
+      type: string
+      enum: [kipkiren_pay, identiti, todoku]
+
+    ActionStatus:
+      type: string
+      enum: [pending, completed, failed]
+
+    Action:
+      type: object
+      required: [id, account_uuid, agent_id, target_rail, target_operation, status, initiated_by, created_at]
+      properties:
+        id:
+          type: string
+          pattern: '^act_[0-9A-HJKMNP-TV-Z]{26}$'
+        account_uuid:
+          $ref: '#/components/schemas/AccountUuid'
+        agent_id:
+          type: string
+          pattern: '^agt_[0-9A-HJKMNP-TV-Z]{26}$'
+        delegated_authority_jti:
+          type: string
+          pattern: '^daa_[0-9A-HJKMNP-TV-Z]{26}$'
+        target_rail:
+          $ref: '#/components/schemas/TargetRail'
+        target_operation:
+          type: string
+          description: 'e.g. `payment.execute`, `payout.initiate`, `message.send`, `goals.deposit`'
+        status:
+          $ref: '#/components/schemas/ActionStatus'
+        initiated_by:
+          $ref: '#/components/schemas/InitiatedBy'
+        actor:
+          $ref: '#/components/schemas/Actor'
+        request_payload:
+          type: object
+          additionalProperties: true
+          description: Redacted per Reboot Pack §9.5 (no PII, no phone numbers, no full PANs)
+        result:
+          type: object
+          additionalProperties: true
+          nullable: true
+          description: Redacted result envelope from the downstream rail
+        error_code:
+          type: string
+          nullable: true
+          description: When status='failed', the downstream rail's error code
+        traceparent:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    DispatchActionRequest:
+      type: object
+      required: [account_uuid, target_rail, target_operation, payload]
+      properties:
+        account_uuid: { $ref: '#/components/schemas/AccountUuid' }
+        target_rail: { $ref: '#/components/schemas/TargetRail' }
+        target_operation:
+          type: string
+        payload:
+          type: object
+          additionalProperties: true
+          description: |
+            The downstream-rail-specific request body. Helpan AI does not interpret this; it
+            forwards to the target rail with the validated delegated authority context.
+        initiated_by:
+          $ref: '#/components/schemas/InitiatedBy'
+          description: |
+            Defaults to `agent` for `/actions/dispatch` (this endpoint is for agent-initiated
+            actions). Set explicitly to `human` for agent-suggested-but-human-confirmed flows.
+
+    ActionResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/Action'
+
+    ActionListResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [items]
+              properties:
+                items:
+                  type: array
+                  items: { $ref: '#/components/schemas/Action' }
+                next_cursor:
+                  type: string
+                  nullable: true
+
+    # ---- events -----------------------------------------------------------
+    IngestEventRequest:
+      type: object
+      required: [event_type, app_id, payload]
+      properties:
+        event_type:
+          type: string
+          description: 'App-defined event type (e.g. `lunchdrop.zone_feed.broadcast`)'
+        app_id:
+          type: string
+        account_uuid:
+          $ref: '#/components/schemas/AccountUuid'
+          description: Optional — if event is account-scoped
+        payload:
+          type: object
+          additionalProperties: true
+        published_at:
+          type: string
+          format: date-time
+        app_correlation_id:
+          type: string
+
+    IngestEventResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                event_id:
+                  type: string
+                  pattern: '^evt_[0-9A-HJKMNP-TV-Z]{26}$'
+                accepted_at:
+                  type: string
+                  format: date-time
+
+    # ---- OAuth scopes -----------------------------------------------------
+    OauthScope:
+      type: object
+      required: [id, name, description, rail, default_grantable]
+      properties:
+        id:
+          type: string
+          description: 'e.g. `kipkiren.read.balance`, `chapaa.mmf.rebalance`'
+        name:
+          type: string
+        description:
+          type: string
+        rail:
+          type: string
+          enum: [helpan, kipkiren_pay, identiti, todoku, lunchdrop, chapaa, klokd]
+        default_grantable:
+          type: boolean
+          description: |
+            False for behavioural-detail scopes per scan §6.3 (behavioural-data containment).
+            False scopes require additional friction in the Helpan Console grant flow.
+        elevation_friction:
+          type: string
+          enum: [low, medium, high]
+        category:
+          type: string
+          enum: [read_aggregate, read_behavioural, write_money, write_comms, write_identity, admin]
+
+    OauthScopeListResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                items:
+                  type: array
+                  items: { $ref: '#/components/schemas/OauthScope' }
+
+    OauthScopeResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data: { $ref: '#/components/schemas/OauthScope' }
+
+    CreateOauthScopeRequest:
+      type: object
+      required: [id, name, description, rail, default_grantable, category]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        rail: { type: string }
+        default_grantable: { type: boolean }
+        elevation_friction: { type: string, enum: [low, medium, high] }
+        category: { type: string }
+
+    # ---- agents -----------------------------------------------------------
+    AgentClass:
+      type: string
+      enum: [portfolio_app, third_party_oauth, internal_system]
+
+    AgentStatus:
+      type: string
+      enum: [active, suspended, retired]
+
+    Agent:
+      type: object
+      required: [id, name, agent_class, status, created_at]
+      properties:
+        id:
+          type: string
+          pattern: '^agt_[0-9A-HJKMNP-TV-Z]{26}$'
+        name:
+          type: string
+        agent_class:
+          $ref: '#/components/schemas/AgentClass'
+        owner_app_id:
+          type: string
+          description: For portfolio_app agents — the consuming app that ships this agent
+        third_party_oauth_client_id:
+          type: string
+          description: For third_party_oauth agents — the OAuth client_id registered with Identiti
+        status:
+          $ref: '#/components/schemas/AgentStatus'
+        created_at:
+          type: string
+          format: date-time
+        suspended_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    RegisterAgentRequest:
+      type: object
+      required: [name, agent_class]
+      properties:
+        name: { type: string }
+        agent_class: { $ref: '#/components/schemas/AgentClass' }
+        owner_app_id: { type: string }
+        third_party_oauth_client_id: { type: string }
+
+    UpdateAgentStatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status: { $ref: '#/components/schemas/AgentStatus' }
+        reason: { type: string }
+
+    AgentResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data: { $ref: '#/components/schemas/Agent' }
+
+    # ---- safety policies --------------------------------------------------
+    SafetyPolicy:
+      type: object
+      required: [id, app_id]
+      properties:
+        id:
+          type: string
+          pattern: '^sfp_[0-9A-HJKMNP-TV-Z]{26}$'
+        app_id:
+          type: string
+        category_whitelist:
+          type: array
+          items: { type: string }
+        category_blacklist:
+          type: array
+          items: { type: string }
+        content_moderation_rules:
+          type: array
+          items:
+            type: object
+            properties:
+              rule_id: { type: string }
+              kind:
+                type: string
+                enum: [text_filter, image_filter, link_filter, recipient_filter]
+              pattern: { type: string }
+              action:
+                type: string
+                enum: [reject, flag, redact]
+        audience_posture:
+          type: string
+          enum: [family_friendly, general, adult_confirmed]
+        location_precision_floor:
+          type: string
+          enum: [merchant_level, neighbourhood_level, city_level, none]
+        updated_at:
+          type: string
+          format: date-time
+
+    SafetyPolicyListResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                items:
+                  type: array
+                  items: { $ref: '#/components/schemas/SafetyPolicy' }
+
+    SafetyPolicyResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data: { $ref: '#/components/schemas/SafetyPolicy' }
+
+    # ---- audit log --------------------------------------------------------
+    AuditEntry:
+      type: object
+      required: [id, action, actor_type, request_id, outcome, created_at]
+      properties:
+        id:
+          type: string
+        action:
+          type: string
+          description: 'e.g. `briefing.create`, `authority.issue`, `authority.revoke`, `action.dispatch`, `safety_policy.update`'
+        account_uuid:
+          $ref: '#/components/schemas/AccountUuid'
+        agent_id:
+          type: string
+          pattern: '^agt_[0-9A-HJKMNP-TV-Z]{26}$'
+        actor_type:
+          type: string
+          enum: [user, agent, operator, system]
+        actor_id:
+          type: string
+        delegated_authority_jti:
+          type: string
+        initiated_by:
+          $ref: '#/components/schemas/InitiatedBy'
+        target_rail:
+          $ref: '#/components/schemas/TargetRail'
+        target_operation:
+          type: string
+        request_id:
+          type: string
+        traceparent:
+          type: string
+        outcome:
+          type: string
+          enum: [success, failure]
+        detail:
+          type: object
+          additionalProperties: true
+        previous_hash:
+          type: string
+          description: SHA-256 chain of audit entries (per Reboot Pack §9.5; tamper-evident)
+        entry_hash:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    AuditLogListResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                items:
+                  type: array
+                  items: { $ref: '#/components/schemas/AuditEntry' }
+                next_cursor:
+                  type: string
+                  nullable: true
+
+    # ---- health -----------------------------------------------------------
+    HealthResponse:
+      type: object
+      required: [ok, status, version]
+      properties:
+        ok:
+          type: boolean
+        status:
+          type: string
+          enum: [healthy, degraded, unavailable]
+        version:
+          type: string
+
+    DeepHealthResponse:
+      type: object
+      required: [ok, status, components]
+      properties:
+        ok: { type: boolean }
+        status: { type: string, enum: [healthy, degraded, unavailable] }
+        components:
+          type: object
+          properties:
+            database: { type: string, enum: [healthy, degraded, unavailable] }
+            kafka: { type: string, enum: [healthy, degraded, unavailable] }
+            identiti: { type: string, enum: [healthy, degraded, unavailable] }
+            kipkiren_pay: { type: string, enum: [healthy, degraded, unavailable] }
+            todoku: { type: string, enum: [healthy, degraded, unavailable] }
+            llm_provider: { type: string, enum: [healthy, degraded, unavailable] }
+
+  # --------------------------------------------------------------------------
+  # RESPONSES
+  # --------------------------------------------------------------------------
+  responses:
+    AuthHmacInvalid:
+      description: HMAC signature invalid, missing, or timestamp out of tolerance
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+
+    Forbidden:
+      description: Authentication succeeded but scope or tenant status forbids the operation
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+
+    RequestInvalid:
+      description: Request body or parameters failed validation
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+
+    IdempotencyConflict:
+      description: Idempotency key reused with different request body
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+
+    RateExceeded:
+      description: Per-app rate or velocity envelope exceeded
+      headers:
+        Retry-After:
+          schema: { type: integer }
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+
+# ============================================================================
+# WEBHOOKS
+# ============================================================================
+webhooks:
+  briefingMatched:
+    post:
+      summary: Briefing matched an event — delivered to consuming apps
+      description: |
+        Sent to the consuming app's webhook endpoint when an event ingested via `/events/ingest`
+        matches an active briefing. The app's handler typically renders a notification through Todoku
+        or surfaces the match in-app. Signature verification per App Integration Guide §17 — header
+        `X-Helpan-Signature: hmac-sha256={hex}` over `{X-Helpan-Timestamp}.{X-Helpan-Nonce}.{rawBody}`.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [event_id, event_type, briefing_id, account_uuid, matched_at]
+              properties:
+                event_id: { type: string }
+                event_type:
+                  type: string
+                  enum: [BRIEFING_MATCHED]
+                briefing_id:
+                  type: string
+                  pattern: '^brf_[0-9A-HJKMNP-TV-Z]{26}$'
+                account_uuid: { $ref: '#/components/schemas/AccountUuid' }
+                source_event_id: { type: string }
+                match_confidence:
+                  type: string
+                  enum: [high, medium, low]
+                matched_at: { type: string, format: date-time }
+                payload:
+                  type: object
+                  additionalProperties: true
+      responses:
+        '200':
+          description: App acknowledges receipt within 10-second SLA
+
+  authorityRevoked:
+    post:
+      summary: Authority revoked — propagation to relying parties
+      description: |
+        Emitted when a delegated authority is revoked. Relying parties (Kipkiren Pay, Todoku, consuming-
+        app servers) consume this on the platform Kafka bus to invalidate per-call validation caches.
+        v1.1 CAEP push-revocation supplements this with a stronger SLA.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [event_id, event_type, authority_id, account_uuid, revoked_at]
+              properties:
+                event_id: { type: string }
+                event_type:
+                  type: string
+                  enum: [AUTHORITY_REVOKED]
+                authority_id:
+                  type: string
+                  pattern: '^daa_[0-9A-HJKMNP-TV-Z]{26}$'
+                account_uuid: { $ref: '#/components/schemas/AccountUuid' }
+                agent_id:
+                  type: string
+                  pattern: '^agt_[0-9A-HJKMNP-TV-Z]{26}$'
+                reason: { type: string }
+                revoked_at: { type: string, format: date-time }
+      responses:
+        '200':
+          description: Acknowledged

@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Helpan AI Rail — DoD & MVP v1.0</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Syne:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --cream: #F7F4EE;
+    --ink: #111008;
+    --slate: #2C2C2C;
+    --teal: #0D5C4E;
+    --teal-mid: #0E7A68;
+    --teal-light: #E8F5F2;
+    --amber: #C47A1A;
+    --amber-light: #FEF3E2;
+    --border: #DDD8CC;
+    --mid: #888070;
+    --danger: #B91C1C;
+    --danger-light: #FEF2F2;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--cream);
+    color: var(--ink);
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    line-height: 1.7;
+    padding: 0;
+  }
+
+  /* HEADER */
+  .doc-header {
+    background: var(--teal);
+    color: var(--cream);
+    padding: 56px 64px 48px;
+    border-bottom: 3px solid var(--amber);
+  }
+  .doc-header .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--teal-light);
+    margin-bottom: 16px;
+  }
+  .doc-header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 36px;
+    font-weight: 700;
+    line-height: 1.2;
+    color: #fff;
+    margin-bottom: 8px;
+  }
+  .doc-header .subtitle {
+    font-size: 14px;
+    color: var(--teal-light);
+    margin-bottom: 28px;
+  }
+  .meta-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 8px 32px;
+    margin-top: 24px;
+  }
+  .meta-item { font-size: 12px; color: var(--teal-light); }
+  .meta-item strong { color: #fff; font-weight: 600; display: block; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; font-family: 'JetBrains Mono', monospace; }
+
+  /* NAV */
+  .toc {
+    background: var(--teal-light);
+    border-bottom: 1px solid var(--border);
+    padding: 24px 64px;
+  }
+  .toc-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--teal);
+    margin-bottom: 10px;
+  }
+  .toc-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+  }
+  .toc-links a {
+    font-size: 12px;
+    color: var(--teal);
+    text-decoration: none;
+    font-weight: 500;
+  }
+  .toc-links a:hover { text-decoration: underline; }
+
+  /* LAYOUT */
+  .container { max-width: 900px; margin: 0 auto; padding: 0 64px 80px; }
+
+  /* SECTIONS */
+  .section { padding: 48px 0 0; border-top: 1px solid var(--border); margin-top: 48px; }
+  .section:first-of-type { border-top: none; margin-top: 40px; }
+
+  .section-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--amber);
+    margin-bottom: 8px;
+  }
+
+  h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--teal);
+    margin-bottom: 20px;
+    line-height: 1.25;
+  }
+
+  h3 {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--ink);
+    margin: 28px 0 10px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  h4 {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--teal-mid);
+    margin: 20px 0 8px;
+  }
+
+  p { margin-bottom: 14px; color: var(--slate); font-size: 14px; }
+
+  /* CALLOUT BOXES */
+  .callout {
+    border-left: 3px solid var(--teal);
+    background: var(--teal-light);
+    padding: 16px 20px;
+    margin: 20px 0;
+    border-radius: 0 4px 4px 0;
+  }
+  .callout.amber {
+    border-left-color: var(--amber);
+    background: var(--amber-light);
+  }
+  .callout.danger {
+    border-left-color: var(--danger);
+    background: var(--danger-light);
+  }
+  .callout p { margin: 0; font-size: 13px; color: var(--slate); }
+  .callout strong { color: var(--ink); }
+
+  /* STAGE CARDS */
+  .stage-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin: 20px 0;
+  }
+  .stage-card {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 20px;
+    background: #fff;
+  }
+  .stage-card .stage-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--amber);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .stage-card .stage-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--teal);
+    margin-bottom: 8px;
+  }
+  .stage-card p { font-size: 13px; color: var(--mid); margin: 0; }
+
+  /* TABLES */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    font-size: 13px;
+  }
+  thead tr { background: var(--teal); color: #fff; }
+  thead th {
+    padding: 10px 14px;
+    text-align: left;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+  tbody tr { border-bottom: 1px solid var(--border); }
+  tbody tr:nth-child(even) { background: #faf8f4; }
+  tbody td { padding: 10px 14px; color: var(--slate); vertical-align: top; }
+  .tag {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-weight: 500;
+  }
+  .tag.in { background: var(--teal-light); color: var(--teal); }
+  .tag.out { background: #f3f4f6; color: var(--mid); }
+  .tag.soft { background: var(--amber-light); color: var(--amber); }
+
+  /* CHECKLISTS */
+  .dod-block {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 24px 28px;
+    margin: 20px 0;
+  }
+  .dod-block h4 { margin-top: 0; }
+  .checklist { list-style: none; margin: 0; padding: 0; }
+  .checklist li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--slate);
+  }
+  .checklist li:last-child { border-bottom: none; }
+  .check-box {
+    width: 16px;
+    height: 16px;
+    min-width: 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 3px;
+    margin-top: 3px;
+    background: var(--cream);
+  }
+
+  /* METRICS */
+  .metric-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    margin: 20px 0;
+  }
+  .metric-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px 18px;
+  }
+  .metric-card .m-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--mid);
+    margin-bottom: 4px;
+  }
+  .metric-card .m-value {
+    font-family: 'Playfair Display', serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--teal);
+  }
+  .metric-card .m-desc { font-size: 11px; color: var(--mid); margin-top: 4px; }
+
+  /* ROADMAP */
+  .roadmap { margin: 20px 0; }
+  .roadmap-item {
+    display: flex;
+    gap: 20px;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .roadmap-item:last-child { border-bottom: none; }
+  .roadmap-ver {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--amber);
+    min-width: 48px;
+    padding-top: 2px;
+  }
+  .roadmap-content { font-size: 13px; color: var(--slate); }
+  .roadmap-content strong { color: var(--ink); display: block; margin-bottom: 4px; }
+
+  /* SIGN-OFF */
+  .signoff-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin: 20px 0;
+  }
+  .signoff-box {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px;
+    background: #fff;
+    text-align: center;
+  }
+  .signoff-box .role {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--mid);
+    margin-bottom: 6px;
+  }
+  .signoff-box .name {
+    font-family: 'Playfair Display', serif;
+    font-size: 14px;
+    color: var(--teal);
+    font-weight: 600;
+  }
+  .signoff-box .sig-line {
+    border-top: 1px solid var(--border);
+    margin-top: 24px;
+    padding-top: 6px;
+    font-size: 10px;
+    color: var(--mid);
+  }
+
+  /* FOOTER */
+  .doc-footer {
+    background: var(--ink);
+    color: rgba(247,244,238,0.5);
+    padding: 24px 64px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .doc-footer span { color: rgba(247,244,238,0.18); }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="doc-header">
+  <div class="label">Kirimon Market Ventures · Helpan AI Rail · Design Corpus</div>
+  <h1>Definition of Done<br>& MVP Scope</h1>
+  <div class="subtitle">Helpan AI Rail v1.0 · Authoritative build reference</div>
+  <div class="meta-grid">
+    <div class="meta-item"><strong>Owner</strong>Chamia Mutuku · CEO & CPO</div>
+    <div class="meta-item"><strong>CTO</strong>Silvia Mumbua</div>
+    <div class="meta-item"><strong>Date</strong>5 May 2026</div>
+    <div class="meta-item"><strong>Status</strong>Authoritative</div>
+    <div class="meta-item"><strong>Corpus</strong>Read alongside Instruction Pack v1.0</div>
+  </div>
+</div>
+
+<!-- TOC -->
+<div class="toc">
+  <div class="toc-label">Contents</div>
+  <div class="toc-links">
+    <a href="#purpose">Purpose</a>
+    <a href="#context">Strategic Context</a>
+    <a href="#mvp-def">MVP Definition</a>
+    <a href="#in-scope">In Scope v1.0</a>
+    <a href="#out-scope">Out of Scope</a>
+    <a href="#stages">Stage Model</a>
+    <a href="#dod">Definition of Done</a>
+    <a href="#launch">Launch Criteria</a>
+    <a href="#metrics">Success Metrics</a>
+    <a href="#risks">Risks</a>
+    <a href="#roadmap">Roadmap</a>
+    <a href="#signoff">Sign-off</a>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- 1. PURPOSE -->
+<div class="section" id="purpose">
+  <div class="section-label">§ 1</div>
+  <h2>Purpose and how to use</h2>
+  <p>This document serves two functions in a single reference. <strong>MVP Scope</strong> defines exactly what ships in Helpan AI v1.0. <strong>Definition of Done</strong> defines the quality bar that must be met at each stage before work can advance.</p>
+  <div class="callout amber">
+    <p><strong>Critical rule:</strong> A feature is not "in MVP" unless it is also "done" by the criteria in this document. There is no MVP without DoD.</p>
+  </div>
+  <p>Use §3–§6 as the product boundary reference throughout the build. Use §7–§9 as the sprint gate and stage-advance checklist. Use §10 as the go/no-go checklist for v1.0 production release.</p>
+</div>
+
+<!-- 2. CONTEXT -->
+<div class="section" id="context">
+  <div class="section-label">§ 2</div>
+  <h2>Strategic context</h2>
+  <p>Helpan AI is being built in direct response to the disintermediation thesis: AI agents will become the primary interface between consumers and their financial and commercial services within three to five years. Kenya is not immune. The Kirimon portfolio's response is to build the agent rail — and each consuming app's branded agent — before third-party agents arrive and absorb the customer relationship.</p>
+  <div class="callout">
+    <p>The two McKinsey reports informing this design (April 2026) are cited in full in <strong>Instruction Pack §4</strong>. Read §4 before this document if you have not already.</p>
+  </div>
+  <p><strong>Silvia is starting the rail build today, 5 May 2026.</strong> This document governs that build from the first commit.</p>
+</div>
+
+<!-- 3. MVP DEFINITION -->
+<div class="section" id="mvp-def">
+  <div class="section-label">§ 3</div>
+  <h2>MVP definition</h2>
+  <div class="callout">
+    <p><strong>Helpan AI v1.0 MVP is defined as:</strong> the minimum Helpan AI rail that allows at least two consuming apps to ship a production-grade branded Helpan agent — with full delegated authority, consent surface, notification routing, and payment orchestration — without building any agent infrastructure themselves.</p>
+  </div>
+  <p>"Production-grade" means: secure, auditable, regulator-compliant, observable, and recoverable from failure.</p>
+
+  <h3>Flagship integrations (hard MVP gates)</h3>
+  <table>
+    <thead><tr><th>App</th><th>Agent</th><th>Status</th><th>Why it's a gate</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Klokd</strong></td>
+        <td>Helpan Klokd</td>
+        <td><span class="tag in">Hard gate · P1</span></td>
+        <td>Beta live. Casual labour marketplace agent. Shift matching, M-Pesa-native pay-on-completion, worker reputation signals. Highest integration readiness.</td>
+      </tr>
+      <tr>
+        <td><strong>Lunch Drop</strong></td>
+        <td>Helpan Lunch Drop</td>
+        <td><span class="tag in">Hard gate · P2</span></td>
+        <td>Beta live. ZoneFeed personalisation augmentation, weekly lunch plan briefings, reliability nudges.</td>
+      </tr>
+      <tr>
+        <td><strong>Chapaa</strong></td>
+        <td>Helpan Chapaa</td>
+        <td><span class="tag in">Hard gate · P3</span></td>
+        <td>Advanced build. Highest regulatory and financial stakes. Savings agent must ship before third-party agents absorb the relationship.</td>
+      </tr>
+      <tr>
+        <td><strong>New family-discovery app</strong> (TBD)</td>
+        <td>Helpan [App Name]</td>
+        <td><span class="tag in">Hard gate · P4</span></td>
+        <td>New build. Benefits from lessons of integrations 1–3. Agent capability is the product's primary differentiator.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- 4. IN SCOPE -->
+<div class="section" id="in-scope">
+  <div class="section-label">§ 4</div>
+  <h2>MVP scope — what is IN for v1.0</h2>
+
+  <h4>Rail capabilities</h4>
+  <ul style="padding-left:20px;font-size:13px;color:var(--slate);line-height:2;">
+    <li>Agent runtime (execution, tool calls, orchestration)</li>
+    <li>Briefing management (CRUD, types: alert / standing basket / scheduled action / threshold watch)</li>
+    <li>Matching engine (real-time event ingestion, briefing-to-event matching, match confidence scoring)</li>
+    <li>Delegated authority (issuance, validation, revocation; ≤5s propagation)</li>
+    <li>Helpan Console (shared React Native library; active authorities, activity log, one-tap revocation)</li>
+    <li>Audit log (immutable; 7yr retention for money-touching, 2yr all others)</li>
+    <li>Agent-to-rail dispatch (Kipkiren Pay, Identiti, Todoku)</li>
+    <li>Per-app safety policies (category whitelist, content moderation hooks)</li>
+    <li>Observability (success rates, latency, cost per app, alerting)</li>
+    <li>Operator console (audit review, safety admin, agent registration, scope catalogue)</li>
+  </ul>
+
+  <h4>Rail integrations</h4>
+  <table>
+    <thead><tr><th>Rail</th><th>Capabilities consumed in v1.0</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Identiti</strong></td>
+        <td>JWT validation, step-up token flow, consent record reads, event subscriptions (UserDeleted, AccountMerged, ConsentRevoked, KYCDowngraded)</td>
+      </tr>
+      <tr>
+        <td><strong>Kipkiren Pay</strong></td>
+        <td>Payment, verification primitive, hold/release/escrow, refund, dispute, statement, programmable money/scheduled transfers, delegated authority validation endpoint</td>
+      </tr>
+      <tr>
+        <td><strong>Todoku</strong></td>
+        <td>Notification dispatch (push, SMS, in-app inbox); structured request format; quiet hours and frequency caps delegated to Todoku</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h4>SDK</h4>
+  <p style="font-size:13px;color:var(--slate);">React Native client SDK covering full consumer-side surface (Instruction Pack §6.2). Documentation and integration guides for both flagship apps.</p>
+
+  <h4>OAuth scope catalogue</h4>
+  <p style="font-size:13px;color:var(--slate);">Scope catalogue defined for all v1.0 consuming apps. Default posture: most restrictive. Manual approval for third-party agents in v1.0.</p>
+</div>
+
+<!-- 5. OUT OF SCOPE -->
+<div class="section" id="out-scope">
+  <div class="section-label">§ 5</div>
+  <h2>MVP scope — what is OUT for v1.0</h2>
+  <table>
+    <thead><tr><th>Item</th><th>Deferred to</th><th>Rationale</th></tr></thead>
+    <tbody>
+      <tr><td>Server-side SDKs (Node, PHP, Python)</td><td>v1.1</td><td>React Native covers all v1.0 apps</td></tr>
+      <tr><td>Developer portal for third-party agents</td><td>v1.1</td><td>Manual ops approval sufficient for v1.0</td></tr>
+      <tr><td>Helpan Lunch Drop (if bandwidth constrained)</td><td>v1.1</td><td>Soft commitment only</td></tr>
+      <tr><td>Helpan SabakiFresh</td><td>v1.1</td><td>Sabaki schema not yet unblocked</td></tr>
+      <tr><td>Helpan Kipkiren consumer</td><td>v1.1</td><td>Kipkiren Pay consumer app not in active sprint</td></tr>
+      <tr><td>Helpan Nightpulse</td><td>v1.2</td><td>Separate audience and safety posture; right to extend must be earned</td></tr>
+      <tr><td>Autonomous MMF rebalancing (Helpan Chapaa)</td><td>v1.1</td><td>Suggest-only is the safe default in v1.0</td></tr>
+      <tr><td>Full cross-app data access flows</td><td>v1.1</td><td>Requires additional consent UX and legal review</td></tr>
+      <tr><td>Voice and chat agent surfaces</td><td>v2.0</td><td>Text-first; voice adds significant complexity</td></tr>
+      <tr><td>Helpan Console standalone app</td><td>v2.0</td><td>Shared library sufficient for v1.0</td></tr>
+      <tr><td>Agent-to-agent communication</td><td>v2.0</td><td>Not required for v1.0 use cases</td></tr>
+      <tr><td>Predictive intent (proactive agent)</td><td>v2.0</td><td>Requires behavioural data maturity not available at launch</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- 6. STAGES -->
+<div class="section" id="stages">
+  <div class="section-label">§ 6</div>
+  <h2>Stage model</h2>
+  <div class="stage-grid">
+    <div class="stage-card">
+      <div class="stage-num">Stage 0</div>
+      <div class="stage-name">Specification</div>
+      <p>Design corpus complete. All hard blockers resolved. No code in production.</p>
+    </div>
+    <div class="stage-card">
+      <div class="stage-num">Stage 1</div>
+      <div class="stage-name">Internal Alpha</div>
+      <p>Rail running in staging. Internal team using it. Both flagship integrations wired in staging.</p>
+    </div>
+    <div class="stage-card">
+      <div class="stage-num">Stage 2</div>
+      <div class="stage-name">Closed Beta</div>
+      <p>Rail in production behind feature flag. Controlled set of real users on both flagship apps.</p>
+    </div>
+    <div class="stage-card">
+      <div class="stage-num">Stage 3</div>
+      <div class="stage-name">Production</div>
+      <p>General availability. All DoD criteria met. All v1.0 consuming-app integrations live.</p>
+    </div>
+  </div>
+  <div class="callout amber">
+    <p><strong>Stage advance rule:</strong> All DoD criteria for a stage must be met and signed off before advancing. Partial completion does not qualify.</p>
+  </div>
+</div>
+
+<!-- 7. DOD -->
+<div class="section" id="dod">
+  <div class="section-label">§ 7</div>
+  <h2>Definition of Done</h2>
+
+  <h3>Stage 0 — Specification complete</h3>
+  <div class="dod-block">
+    <h4>Contracts and specifications</h4>
+    <ul class="checklist">
+      <li><div class="check-box"></div>OpenAPI 3.x specification complete for all rail-side endpoints (Instruction Pack §6.1)</li>
+      <li><div class="check-box"></div>Delegated authority token contract complete and signed off by Identiti and Security (§6.4)</li>
+      <li><div class="check-box"></div>Step-up token contract joint with Identiti complete (§8.4)</li>
+      <li><div class="check-box"></div>OAuth scope catalogue v1 complete (§12.1)</li>
+      <li><div class="check-box"></div>Rail-to-rail contracts complete: Helpan AI ↔ Identiti, ↔ Kipkiren Pay, ↔ Todoku (§6.3)</li>
+      <li><div class="check-box"></div>Event bus contract complete (Output Plan item 6)</li>
+      <li><div class="check-box"></div>Kipkiren Pay gap analysis complete (§9.4)</li>
+    </ul>
+    <h4>Schema and data model</h4>
+    <ul class="checklist">
+      <li><div class="check-box"></div>Full ERD complete for all rail-side tables (§7.1)</li>
+      <li><div class="check-box"></div>RLS policy specification complete for all tables (§7.4)</li>
+      <li><div class="check-box"></div>Audit log specification complete with retention rules (§7.3)</li>
+    </ul>
+    <h4>Security and legal</h4>
+    <ul class="checklist">
+      <li><div class="check-box"></div>Threat model (STRIDE or equivalent) complete and reviewed</li>
+      <li><div class="check-box"></div>Per-app safety policy schema defined</li>
+      <li><div class="check-box"></div>Regulatory containment confirmed by legal (§9.3)</li>
+      <li><div class="check-box"></div>Behavioural data containment policy confirmed per app</li>
+      <li><div class="check-box"></div>ODPC registration alignment confirmed</li>
+    </ul>
+    <h4>Design and sign-off</h4>
+    <ul class="checklist">
+      <li><div class="check-box"></div>Helpan Console design specification complete</li>
+      <li><div class="check-box"></div>Confirmation Memo produced and accepted by Chamia</li>
+    </ul>
+  </div>
+
+  <h3>Stage 1 — Internal Alpha</h3>
+  <div class="dod-block">
+    <h4>Infrastructure</h4>
+    <ul class="checklist">
+      <li><div class="check-box"></div>Supabase schema (af-south-1) deployed with full RLS</li>
+      <li><div class="check-box"></div>All rail-side endpoints implemented and passing contract tests</li>
+      <li><div class="check-box"></div>Delegated authority issuance, validation, and revocation working end-to-end</li>
+      <li><div class="check-box"></div>Revocation propagation to Kipkiren Pay and Todoku confirmed within 5-second SLA</li>
+      <li><div class="check-box"></div>Audit log writing and reading confirmed</li>
+      <li><div class="check-box"></div>Matching engine processing test events and firing matches</li>
+    </ul>
+    <h4>Integrations</h4>
+    <ul class="checklist">
+      <li><div class="check-box"></div>Identiti JWT validation live in staging</li>
+      <li><div class="check-box"></div>Identiti step-up token flow live in staging</li>
+      <li><div class="check-box"></div>Kipkiren Pay agent-native endpoints live in staging (all v1.0 capabilities)</li>
+      <li><div class="check-box"></div>Todoku notification dispatch live in staging</li>
+    </ul>
+    <h4>Consuming apps and SDK</h4>
+    <ul class="checklist">
+      <li><div class="check-box"></div>Helpan Klokd wired in staging — shift briefings, employer shift-fill, pay-on-completion via Kipkiren Pay</li>
+      <li><div class="check-box"></div>Helpan Lunch Drop wired in staging — ZoneFeed augmentation, weekly plan briefings, reliability nudges</li>
+      <li><div class="check-box"></div>Helpan Chapaa wired in staging — goal nudges, round-up, MMF suggest, credit unlock</li>
+      <li><div class="check-box"></div>Helpan [Family-Discovery App] wired in staging — briefings, matching, family-safe policy, Helpan Console</li>
+      <li><div class="check-box"></div>React Native SDK published to internal registry</li>
+      <li><div class="check-box"></div>Integration guide complete</li>
+    </ul>
+    <h4>Observability</h4>
+    <ul class="checklist">
+      <li><div class="check-box"></div>All observability metrics instrumented and visible in ops dashboard</li>
+      <li><div class="check-box"></div>Alerting configured on critical thresholds</li>
+    </ul>
+  </div>
+
+  <h3>Stage 2 — Closed Beta</h3>
+  <div class="dod-block">
+    <h4>Production readiness</h4>
+    <ul class="checklist">
+      <li><div class="check-box"></div>Rail deployed to production (feature-flagged)</li>
+      <li><div class="check-box"></div>DR drill completed and documented</li>
+      <li><div class="check-box"></div>Incident management runbooks complete</li>
+      <li><div class="check-box"></div>Load test completed against expected v1.0 agent volume</li>
+      <li><div class="check-box"></div>All Critical and High penetration test findings resolved</li>
+    </ul>
+    <h4>Consuming apps and users</h4>
+    <ul class="checklist">
+      <li><div class="check-box"></div>Helpan Klokd live in production — closed beta (≥50 workers, ≥20 employers)</li>
+      <li><div class="check-box"></div>Helpan Lunch Drop live in production — closed beta cohort (≥50 users)</li>
+      <li><div class="check-box"></div>Helpan Chapaa live in production — closed beta cohort (≥50 users)</li>
+      <li><div class="check-box"></div>Helpan [Family-Discovery App] live in production — closed beta cohort (≥50 users)</li>
+      <li><div class="check-box"></div>Helpan Console UX validated with ≥10 real users</li>
+      <li><div class="check-box"></div>Operator console live for Kirimon ops team</li>
+    </ul>
+    <h4>Compliance</h4>
+    <ul class="checklist">
+      <li><div class="check-box"></div>ODPC registration complete or confirmed in progress with legal timeline</li>
+      <li><div class="check-box"></div>Kenya Data Protection Act 2019 alignment confirmed by legal counsel</li>
+      <li><div class="check-box"></div>Audit log verified in production with retention policy active</li>
+    </ul>
+  </div>
+
+  <h3>Stage 3 — Production</h3>
+  <div class="dod-block">
+    <h4>Scale and stability</h4>
+    <ul class="checklist">
+      <li><div class="check-box"></div>Zero Critical or High open security findings</li>
+      <li><div class="check-box"></div>P99 agent action dispatch latency ≤ 2 seconds under expected load</li>
+      <li><div class="check-box"></div>Rail uptime ≥ 99.5% over trailing 30 days</li>
+      <li><div class="check-box"></div>Revocation propagation ≤ 5 seconds confirmed under load</li>
+      <li><div class="check-box"></div>No data leakage incidents in closed beta</li>
+    </ul>
+    <h4>Consuming apps and OAuth</h4>
+    <ul class="checklist">
+      <li><div class="check-box"></div>All four flagship integrations live with general availability (Helpan Klokd, Helpan Lunch Drop, Helpan Chapaa, Helpan [Family-Discovery App])</li>
+      <li><div class="check-box"></div>Helpan Lunch Drop live (or formally deferred to v1.1 with Chamia sign-off)</li>
+      <li><div class="check-box"></div>Helpan Console available to all users of all live integrations</li>
+      <li><div class="check-box"></div>OAuth scope catalogue published and documented</li>
+      <li><div class="check-box"></div>At least one third-party agent integration validated and live</li>
+    </ul>
+    <h4>Documentation and sign-off</h4>
+    <ul class="checklist">
+      <li><div class="check-box"></div>All Output Plan items 1–16 complete and published</li>
+      <li><div class="check-box"></div>Reboot Pack v1.0 complete and accepted</li>
+      <li><div class="check-box"></div>Chamia (CEO & CPO) product sign-off</li>
+      <li><div class="check-box"></div>Silvia (CTO) technical sign-off</li>
+      <li><div class="check-box"></div>Legal compliance sign-off</li>
+    </ul>
+  </div>
+
+  <h3>DoD working rules</h3>
+  <div class="callout danger">
+    <p><strong>Binary criteria only.</strong> Every criterion is pass/fail. "Mostly done" is not done. Every criterion requires evidence — a deliverable, a test result, a sign-off. Regressions reset the stage. Security findings block stage advance.</p>
+  </div>
+</div>
+
+<!-- 8. LAUNCH CRITERIA -->
+<div class="section" id="launch">
+  <div class="section-label">§ 8</div>
+  <h2>MVP launch criteria — v1.0 go/no-go</h2>
+  <p>All criteria must be met. No exceptions.</p>
+  <div class="dod-block">
+    <h4>Product</h4>
+    <ul class="checklist">
+      <li><div class="check-box"></div>All four flagship integrations live and passing DoD Stage 3 (Helpan Klokd, Helpan Lunch Drop, Helpan Chapaa, Helpan [Family-Discovery App])</li>
+      <li><div class="check-box"></div>Helpan Console available to all users of both integrations</li>
+      <li><div class="check-box"></div>Family-friendly safety policy enforced and validated in production</li>
+      <li><div class="check-box"></div>Chapaa MMF rebalancing defaulting to suggest-only, confirmed in production</li>
+    </ul>
+    <h4>Security and performance</h4>
+    <ul class="checklist">
+      <li><div class="check-box"></div>Zero open Critical or High security findings</li>
+      <li><div class="check-box"></div>Penetration test complete; all Critical and High resolved</li>
+      <li><div class="check-box"></div>Delegated authority revocation confirmed ≤ 5 seconds under load</li>
+      <li><div class="check-box"></div>No cross-app data leakage confirmed in closed beta</li>
+      <li><div class="check-box"></div>P99 dispatch latency ≤ 2 seconds under load</li>
+      <li><div class="check-box"></div>Rail uptime ≥ 99.5% over trailing 30 days</li>
+    </ul>
+    <h4>Compliance and operations</h4>
+    <ul class="checklist">
+      <li><div class="check-box"></div>Legal sign-off: regulatory containment, DPA 2019, ODPC</li>
+      <li><div class="check-box"></div>Audit log live and verified in production</li>
+      <li><div class="check-box"></div>DR drill complete</li>
+      <li><div class="check-box"></div>Incident runbooks live and tested</li>
+      <li><div class="check-box"></div>Operator console live for Kirimon ops team</li>
+      <li><div class="check-box"></div>Reboot Pack v1.0 complete</li>
+    </ul>
+    <h4>Sign-off</h4>
+    <ul class="checklist">
+      <li><div class="check-box"></div>Chamia (CEO & CPO) product sign-off</li>
+      <li><div class="check-box"></div>Silvia (CTO) technical sign-off</li>
+      <li><div class="check-box"></div>Legal compliance sign-off</li>
+    </ul>
+  </div>
+</div>
+
+<!-- 9. METRICS -->
+<div class="section" id="metrics">
+  <div class="section-label">§ 9</div>
+  <h2>Success metrics for v1.0</h2>
+  <p>Measured at 30, 60, and 90 days post-launch.</p>
+
+  <h4>Rail health targets</h4>
+  <div class="metric-grid">
+    <div class="metric-card">
+      <div class="m-label">Action success rate</div>
+      <div class="m-value">≥ 95%</div>
+      <div class="m-desc">Across all four flagship integrations combined</div>
+    </div>
+    <div class="metric-card">
+      <div class="m-label">P99 dispatch latency</div>
+      <div class="m-value">≤ 2s</div>
+      <div class="m-desc">Sustained under expected load</div>
+    </div>
+    <div class="metric-card">
+      <div class="m-label">Kipkiren Pay agent txn</div>
+      <div class="m-value">≥ 99%</div>
+      <div class="m-desc">Agent-initiated transaction success rate</div>
+    </div>
+    <div class="metric-card">
+      <div class="m-label">Todoku delivery</div>
+      <div class="m-value">≥ 98%</div>
+      <div class="m-desc">Notification delivery rate</div>
+    </div>
+    <div class="metric-card">
+      <div class="m-label">Identiti step-up</div>
+      <div class="m-value">≥ 99%</div>
+      <div class="m-desc">Step-up token success rate</div>
+    </div>
+    <div class="metric-card">
+      <div class="m-label">Data leakage incidents</div>
+      <div class="m-value">0</div>
+      <div class="m-desc">Cross-app data leakage incidents post-launch</div>
+    </div>
+  </div>
+
+  <h4>Helpan Klokd — key indicators</h4>
+  <p style="font-size:13px;color:var(--slate);">% of active workers with at least one live shift briefing · Shift-fill rate for employer-initiated agent posts vs manual posts · Pay-on-completion agent trigger success rate · Worker reputation signal accuracy (verified shift count vs rated count).</p>
+
+  <h4>Helpan Chapaa — key indicators</h4>
+  <p style="font-size:13px;color:var(--slate);">% of active Chapaa users interacting with a Helpan suggestion · Goal acceleration rate (days-to-goal with vs without Helpan) · Round-up prompt acceptance rate · MMF rebalancing suggestion acceptance rate · Credit unlock completion rate.</p>
+
+  <h4>Helpan family-discovery app — key indicators</h4>
+  <p style="font-size:13px;color:var(--slate);">% of active users with at least one live briefing within 30 days of onboarding · Briefing-to-notification conversion rate · Standing-basket activation rate · Helpan Console open rate.</p>
+</div>
+
+<!-- 10. RISKS -->
+<div class="section" id="risks">
+  <div class="section-label">§ 10</div>
+  <h2>Known risks and mitigations</h2>
+  <table>
+    <thead><tr><th>Risk</th><th>Likelihood</th><th>Impact</th><th>Mitigation</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Kipkiren Pay agent-native surface not ready when Helpan AI is ready</td>
+        <td>High</td>
+        <td>Blocks flagship integrations</td>
+        <td>Gap analysis must close at Stage 0. Parallel build tracks.</td>
+      </tr>
+      <tr>
+        <td>Identiti step-up token contract takes longer than expected</td>
+        <td>Medium</td>
+        <td>Blocks high-stakes delegated authority flows</td>
+        <td>Begin joint contract design immediately. Agree interim mock for staging.</td>
+      </tr>
+      <tr>
+        <td>Regulatory uncertainty on agent-initiated financial actions</td>
+        <td>Medium</td>
+        <td>Could require redesign of delegated authority model</td>
+        <td>Legal sign-off at Stage 0, not Stage 2.</td>
+      </tr>
+      <tr>
+        <td>Third-party agent abuse (scope over-reach, data harvesting)</td>
+        <td>Medium</td>
+        <td>User trust and DPA 2019 exposure</td>
+        <td>Most-restrictive default scope. Manual approval in v1.0. Anomaly detection.</td>
+      </tr>
+      <tr>
+        <td>Family-discovery app brand not locked before Stage 2</td>
+        <td>Low</td>
+        <td>Integration guide cannot be finalised</td>
+        <td>Working name acceptable for Stage 0–1. Must be locked by Stage 2.</td>
+      </tr>
+      <tr>
+        <td>Consumer inertia on Helpan Console adoption</td>
+        <td>Low</td>
+        <td>Consent surface underused; reduces audit value</td>
+        <td>UX validation with ≥10 users at Stage 2. Console surfaced prominently in onboarding.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- 11. ROADMAP -->
+<div class="section" id="roadmap">
+  <div class="section-label">§ 11</div>
+  <h2>Post-MVP roadmap horizons</h2>
+  <p>Directional, not committed. Sequencing subject to product priorities at the time.</p>
+  <div class="roadmap">
+    <div class="roadmap-item">
+      <div class="roadmap-ver">v1.1</div>
+      <div class="roadmap-content">
+        <strong>First increment post-launch</strong>
+        Helpan Lunch Drop (if deferred) · Helpan SabakiFresh · Server-side SDKs · Developer portal (automated approval) · Autonomous MMF rebalancing for Helpan Chapaa (with limits) · Full cross-app data access flows
+      </div>
+    </div>
+    <div class="roadmap-item">
+      <div class="roadmap-ver">v1.2</div>
+      <div class="roadmap-content">
+        <strong>Second increment</strong>
+        Helpan Kipkiren consumer · Helpan Nightpulse · Enhanced third-party agent tooling · Briefing templates and household sharing
+      </div>
+    </div>
+    <div class="roadmap-item">
+      <div class="roadmap-ver">v2.0</div>
+      <div class="roadmap-content">
+        <strong>Major release</strong>
+        Voice and chat agent surfaces · Helpan Console standalone app · Agent-to-agent communication · Predictive intent · Helpan AI as an external product available to non-Kirimon apps across East Africa
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 12. SIGN-OFF -->
+<div class="section" id="signoff">
+  <div class="section-label">§ 12</div>
+  <h2>Sign-off authority</h2>
+  <table>
+    <thead><tr><th>Stage advance</th><th>Required sign-off</th></tr></thead>
+    <tbody>
+      <tr><td>Stage 0 → Stage 1</td><td>Chamia (product) + Silvia (technical)</td></tr>
+      <tr><td>Stage 1 → Stage 2</td><td>Chamia (product) + Silvia (technical) + Security</td></tr>
+      <tr><td>Stage 2 → Stage 3</td><td>Chamia (product) + Silvia (technical) + Legal + Security</td></tr>
+      <tr><td>Post-launch v1.1 scope</td><td>Chamia</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Stage 3 sign-off memo</h3>
+  <div class="signoff-row">
+    <div class="signoff-box">
+      <div class="role">CEO & CPO · Product</div>
+      <div class="name">Chamia Mutuku</div>
+      <div class="sig-line">Signature &amp; date</div>
+    </div>
+    <div class="signoff-box">
+      <div class="role">CTO · Technical</div>
+      <div class="name">Silvia Mumbua</div>
+      <div class="sig-line">Signature &amp; date</div>
+    </div>
+    <div class="signoff-box">
+      <div class="role">Legal · Compliance</div>
+      <div class="name">Counsel</div>
+      <div class="sig-line">Signature &amp; date</div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<div class="doc-footer">
+  <span>Helpan AI Rail · DoD & MVP v1.0 · 5 May 2026 · Kirimon Market Ventures · Confidential</span>
+  <span>"Done means secure, auditable, and in the hands of real users."</span>
+</div>
+
+</body>
+</html>
