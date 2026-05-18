@@ -160,15 +160,6 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
     overrides?.idempotencyStoreOverride ??
     createPgIdempotencyStore({ db: app.db });
 
-  await app.register(authPlugin, {
-    railPrefix: config.auth.railPrefix,
-    timestampHeaderName: config.auth.timestampHeaderName,
-    toleranceSeconds: config.auth.toleranceSeconds,
-    credentialStore,
-    exemptPaths: EXEMPT_PATHS,
-    exemptPrefixes: HMAC_EXEMPT_PREFIXES,
-  });
-
   // One remote JWKS set serves customer-JWT, step-up, and delegated-authority
   // verification in production — all three are Identiti-signed and `jose`
   // selects the right key by `kid`. Tests inject single `KeyLike`s.
@@ -181,10 +172,23 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
       ? customerKeyResolver
       : createRemoteJWKSet(new URL(config.identiti.jwksUrl)));
 
+  // Customer-JWT plugin registers BEFORE the shared HMAC plugin (H-8a). On a
+  // dual-auth path a verified customer JWT sets request.appId, which makes the
+  // HMAC plugin stand down. On a non-Bearer request to a dual-auth path the
+  // customer-JWT plugin defers and HMAC enforces.
   await app.register(customerJwtPlugin, {
     keyResolver: customerKeyResolver,
     issuer: config.identiti.issuer,
     audience: config.helpan.jwtAudience,
+  });
+
+  await app.register(authPlugin, {
+    railPrefix: config.auth.railPrefix,
+    timestampHeaderName: config.auth.timestampHeaderName,
+    toleranceSeconds: config.auth.toleranceSeconds,
+    credentialStore,
+    exemptPaths: EXEMPT_PATHS,
+    exemptPrefixes: HMAC_EXEMPT_PREFIXES,
   });
 
   await app.register(rlsContextPlugin);

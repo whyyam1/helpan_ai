@@ -116,6 +116,11 @@ const authPluginImpl: FastifyPluginAsync<AuthPluginConfig> = async (fastify, con
   fastify.addHook('preHandler', async (request, reply) => {
     if (isExempt(request.url, config.exemptPaths, config.exemptPrefixes ?? [])) return;
 
+    // Already authenticated by an earlier preHandler (e.g. a rail's
+    // customer-JWT plugin on a dual-auth path) — stand down. The earlier
+    // plugin sets `request.appId`; HMAC has nothing to add.
+    if (request.appId) return;
+
     const authHeader = headerString(request.headers['authorization']);
     if (!authHeader) {
       return reply

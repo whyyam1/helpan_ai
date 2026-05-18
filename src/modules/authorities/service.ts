@@ -62,6 +62,16 @@ export interface AuthorityAuditContext {
   readonly appId: string;
   readonly requestId: string;
   readonly traceparent?: string;
+  /**
+   * 'customer' when the call arrived through the Helpan Console (customer
+   * JWT); 'service' for an HMAC consuming-app server / operator. Default
+   * 'service'. Customer calls audit as `actor_type='user'` with the
+   * `helpan_console.*` action names (Console spec §5); service calls keep
+   * `actor_type='system'` + the `authority.*` actions.
+   */
+  readonly caller?: 'service' | 'customer';
+  /** The customer's Account UUID — required when `caller='customer'`. */
+  readonly callerAccountUuid?: string;
 }
 
 export class AuthorityError extends Error {
@@ -258,11 +268,12 @@ export async function issueAuthority(
       issuedByAppId: audit.appId,
       expiresAt: built.expiresAt,
     });
+    const fromConsole = audit.caller === 'customer';
     await appendAuditEntry(tx, {
-      actorType: 'system',
-      actorId: `app:${audit.appId}`,
+      actorType: fromConsole ? 'user' : 'system',
+      actorId: fromConsole ? (audit.callerAccountUuid ?? args.accountUuid) : `app:${audit.appId}`,
       accountUuid: args.accountUuid,
-      action: 'authority.issue',
+      action: fromConsole ? 'helpan_console.grant' : 'authority.issue',
       resourceType: 'delegated_authority',
       resourceId: built.jti,
       // §A.11: the agent the authority empowers + the authority's own jti,
@@ -488,6 +499,11 @@ export async function revokeAuthority(
   if (!existing) {
     throw new AuthorityError('AUTHORITY_NOT_FOUND', 404, `No authority with id ${authorityId}`);
   }
+  // A Console (customer) caller may only revoke their own authority. Surface
+  // a cross-customer attempt as 404 — never leak that the id exists.
+  if (audit.caller === 'customer' && existing.accountUuid !== audit.callerAccountUuid) {
+    throw new AuthorityError('AUTHORITY_NOT_FOUND', 404, `No authority with id ${authorityId}`);
+  }
   if (existing.status === 'revoked') {
     throw new AuthorityError(
       'AUTHORITY_ALREADY_REVOKED',
@@ -518,11 +534,14 @@ export async function revokeAuthority(
         `Authority ${authorityId} is already revoked`
       );
     }
+    const fromConsole = audit.caller === 'customer';
     await appendAuditEntry(tx, {
-      actorType: 'system',
-      actorId: `app:${audit.appId}`,
+      actorType: fromConsole ? 'user' : 'system',
+      actorId: fromConsole
+        ? (audit.callerAccountUuid ?? revoked.accountUuid)
+        : `app:${audit.appId}`,
       accountUuid: revoked.accountUuid,
-      action: 'authority.revoke',
+      action: fromConsole ? 'helpan_console.revoke' : 'authority.revoke',
       resourceType: 'delegated_authority',
       resourceId: authorityId,
       agentId: revoked.agentId,

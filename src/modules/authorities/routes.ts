@@ -1,22 +1,26 @@
 /**
  * /v1/authorities routes — the rail's most security-critical surface.
  *
- *   POST   /authorities                    — issue (consuming-app server)
- *   GET    /authorities                    — list (powers the Helpan Console; v1.0 HMAC)
- *   GET    /authorities/:authority_id       — read one
+ *   POST   /authorities                        — issue / grant
+ *   GET    /authorities                        — list
+ *   GET    /authorities/:authority_id          — read one
  *   POST   /authorities/:authority_id/validate — relying-party per-call check
  *   POST   /authorities/:authority_id/revoke   — revoke
  *
- * All five are HMAC-authed in v1.0 (H-3 plan decision 1a — customer-JWT
- * authority list/revoke for the Console lands with H-8). Per-endpoint scope:
- *   issue   → helpan:authorities:issue
- *   validate→ helpan:authority:validate
- *   revoke  → helpan:authorities:revoke
- *   GET     → helpan:authorities:issue (read for the issuing surface)
+ * Auth (H-8a — dual-auth):
+ *   - `/validate` is HMAC-only — relying parties (KP / Todoku), scope
+ *     `helpan:authority:validate`.
+ *   - issue / list / detail / revoke accept EITHER HMAC (consuming-app
+ *     server / operator, per-endpoint scope) OR an Identiti customer JWT
+ *     (the Helpan Console). The customer-JWT plugin runs first and, on a
+ *     Bearer request, sets `request.customerJwt`; an HMAC request leaves it
+ *     unset. A customer caller skips the HMAC-scope check (their right to
+ *     see / revoke / grant their own authorities is implicit in the JWT)
+ *     and is hard-scoped to their own `account_uuid`.
  *
- * `POST /validate` is a pure query and is on the idempotency plugin's
- * `exemptSuffixes` list (`/validate`) — it must NOT consume an idempotency
- * key (a 24h-cached validate result would defeat the §4.6 cache rules).
+ * `POST /validate` is on the idempotency plugin's `exemptSuffixes` — it must
+ * not consume an idempotency key (a cached validate result would defeat the
+ * §4.6 cache rules).
  */
 
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
@@ -90,22 +94,52 @@ interface ListQuery {
   limit?: string;
 }
 
+type Caller =
+  | { readonly kind: 'customer'; readonly accountUuid: string }
+  | { readonly kind: 'service' };
+
+/**
+ * The customer-JWT plugin sets `request.customerJwt` on a verified Bearer
+ * request; an HMAC request leaves it unset (the HMAC plugin set `appId` +
+ * `tenantRecord` instead).
+ */
+function resolveCaller(request: FastifyRequest): Caller {
+  if (request.customerJwt) {
+    return { kind: 'customer', accountUuid: request.customerJwt.sub };
+  }
+  return { kind: 'service' };
+}
+
 function headerString(value: string | string[] | undefined): string | undefined {
   if (value === undefined) return undefined;
   return Array.isArray(value) ? value[0] : value;
 }
 
-function buildAuditContext(request: FastifyRequest): AuthorityAuditContext {
+function buildAuditContext(request: FastifyRequest, caller: Caller): AuthorityAuditContext {
   const traceparent = headerString(request.headers['traceparent']);
   return {
     appId: request.appId ?? 'unknown',
     requestId: request.requestId,
     ...(traceparent ? { traceparent } : {}),
+    caller: caller.kind,
+    ...(caller.kind === 'customer' ? { callerAccountUuid: caller.accountUuid } : {}),
   };
 }
 
 function notFound(reply: FastifyReply, requestId: string): FastifyReply {
-  return reply.code(404).send(errorResponse('AUTHORITY_NOT_FOUND', 'Authority not found', requestId));
+  return reply
+    .code(404)
+    .send(errorResponse('AUTHORITY_NOT_FOUND', 'Authority not found', requestId));
+}
+
+function accountMismatch(): Error {
+  const err = new Error(
+    'Body account_uuid does not match the authenticated customer'
+  ) as Error & { code: string; statusCode: number; field: string };
+  err.code = 'AUTH_ACCOUNT_MISMATCH';
+  err.statusCode = 403;
+  err.field = 'account_uuid';
+  return err;
 }
 
 export interface AuthoritiesRoutesConfig {
@@ -122,7 +156,7 @@ export const authoritiesRoutes: FastifyPluginAsync<AuthoritiesRoutesConfig> = as
   config
 ) => {
   // --------------------------------------------------------------------------
-  // POST /authorities — issue
+  // POST /authorities — issue / grant
   // --------------------------------------------------------------------------
   fastify.post<{ Body: IssueBody }>(
     '/authorities',
@@ -133,8 +167,13 @@ export const authoritiesRoutes: FastifyPluginAsync<AuthoritiesRoutesConfig> = as
       },
     },
     async (request, reply) => {
-      requireScope(request, SCOPE_ISSUE);
+      const caller = resolveCaller(request);
+      if (caller.kind === 'service') requireScope(request, SCOPE_ISSUE);
       const body = request.body;
+      // A Console (customer) grant may only issue for the authenticated user.
+      if (caller.kind === 'customer' && body.account_uuid !== caller.accountUuid) {
+        throw accountMismatch();
+      }
       const result = await issueAuthority(
         {
           db: fastify.db,
@@ -145,7 +184,7 @@ export const authoritiesRoutes: FastifyPluginAsync<AuthoritiesRoutesConfig> = as
           daKid: config.daKid,
           ...(fastify.kafka ? { kafka: fastify.kafka } : {}),
         },
-        buildAuditContext(request),
+        buildAuditContext(request, caller),
         {
           accountUuid: body.account_uuid,
           agentId: body.agent_id,
@@ -170,13 +209,18 @@ export const authoritiesRoutes: FastifyPluginAsync<AuthoritiesRoutesConfig> = as
       },
     },
     async (request, reply) => {
-      requireScope(request, SCOPE_ISSUE);
+      const caller = resolveCaller(request);
+      if (caller.kind === 'service') requireScope(request, SCOPE_ISSUE);
       const q = request.query;
       const limit = q.limit === undefined ? undefined : Number.parseInt(q.limit, 10);
+      // A customer is hard-scoped to their own account; any account_uuid query
+      // param is ignored. A service caller may filter by any account.
+      const accountUuid =
+        caller.kind === 'customer' ? caller.accountUuid : q.account_uuid;
       const result = await listAuthoritiesForQuery(fastify.db, {
         ...(q.status !== undefined ? { status: q.status } : {}),
         ...(q.agent_id !== undefined ? { agentId: q.agent_id } : {}),
-        ...(q.account_uuid !== undefined ? { accountUuid: q.account_uuid } : {}),
+        ...(accountUuid !== undefined ? { accountUuid } : {}),
         ...(q.cursor !== undefined ? { cursor: q.cursor } : {}),
         ...(limit !== undefined ? { limit } : {}),
       });
@@ -201,15 +245,20 @@ export const authoritiesRoutes: FastifyPluginAsync<AuthoritiesRoutesConfig> = as
       },
     },
     async (request, reply) => {
-      requireScope(request, SCOPE_ISSUE);
+      const caller = resolveCaller(request);
+      if (caller.kind === 'service') requireScope(request, SCOPE_ISSUE);
       const dto = await readAuthority(fastify.db, request.params.authority_id);
       if (!dto) return notFound(reply, request.requestId);
+      // Cross-customer read → 404 (never leak that the id exists).
+      if (caller.kind === 'customer' && dto.account_uuid !== caller.accountUuid) {
+        return notFound(reply, request.requestId);
+      }
       return reply.send(successResponse(dto, request.requestId));
     }
   );
 
   // --------------------------------------------------------------------------
-  // POST /authorities/:authority_id/validate — relying-party query
+  // POST /authorities/:authority_id/validate — relying-party query (HMAC-only)
   // --------------------------------------------------------------------------
   fastify.post<{ Params: AuthorityIdParams; Body: ValidateBody }>(
     '/authorities/:authority_id/validate',
@@ -261,15 +310,22 @@ export const authoritiesRoutes: FastifyPluginAsync<AuthoritiesRoutesConfig> = as
       },
     },
     async (request, reply) => {
-      requireScope(request, SCOPE_REVOKE);
+      const caller = resolveCaller(request);
+      if (caller.kind === 'service') requireScope(request, SCOPE_REVOKE);
       const body = request.body ?? {};
+      // A customer revocation is always `user_initiated` — a customer cannot
+      // claim operator / security-incident / cascade reasons.
+      const reason: RevocationReason =
+        caller.kind === 'customer' ? 'user_initiated' : (body.reason ?? 'user_initiated');
       const dto = await revokeAuthority(
         { db: fastify.db, ...(fastify.kafka ? { kafka: fastify.kafka } : {}) },
-        buildAuditContext(request),
+        buildAuditContext(request, caller),
         request.params.authority_id,
         {
-          reason: body.reason ?? 'user_initiated',
-          ...(body.detail !== undefined ? { detail: body.detail } : {}),
+          reason,
+          ...(caller.kind === 'service' && body.detail !== undefined
+            ? { detail: body.detail }
+            : {}),
         }
       );
       return reply.send(successResponse(dto, request.requestId));

@@ -19,20 +19,29 @@
  *     jti          (ULID)
  *     phone_token? (opaque JWT — Phase 6 phone-token claim, not used here)
  *
- * Verification sequence on a `/v1/briefings/*` request:
- *   1. Skip if the path is not under `/v1/briefings/`.
- *   2. Read `Authorization: Bearer <jwt>` → AUTH_JWT_MISSING (401)
- *   3. Read `X-App-Id` (per OpenAPI parameters.XAppId) → AUTH_JWT_MISSING (401)
- *   4. Verify signature, iss, aud, exp via jose.jwtVerify.
+ * Path coverage (H-8a):
+ *   - **Mandatory** — `/v1/briefings/*`: customer-JWT is the only accepted
+ *     auth. A non-Bearer request is rejected here (AUTH_JWT_MISSING).
+ *   - **Console authority surface** — `/v1/authorities`, `/v1/authorities/:id`,
+ *     `/v1/authorities/:id/revoke`: dual-auth. A Bearer request is verified
+ *     here; a non-Bearer (HMAC) request is *deferred* — this plugin returns
+ *     and the shared HMAC plugin (registered after it) enforces. The
+ *     `/validate` leaf is excluded — it is HMAC-only (relying parties).
+ *
+ * Verification sequence on a Bearer request:
+ *   1. Read `Authorization: Bearer <jwt>` + `X-App-Id`.
+ *   2. Verify signature, iss, aud, exp via jose.jwtVerify.
  *      - bad signature / malformed / wrong iss      → AUTH_JWT_INVALID (401)
  *      - exp in past                                → AUTH_JWT_EXPIRED (401)
  *      - aud mismatch                               → AUTH_JWT_AUDIENCE (401)
- *   5. Decorate request:
+ *   3. Decorate request:
  *      - request.customerJwt = { sub, scope, tier, sessionKind, jti, raw }
- *      - request.appId       = X-App-Id (so the shared idempotency plugin —
- *                              which keys on (appId, scopedKey) — works
- *                              uniformly across HMAC and BearerCustomer
- *                              auth).
+ *      - request.appId       = X-App-Id. Setting appId also signals the
+ *        shared HMAC plugin (which runs next and skips when appId is set)
+ *        and lets the shared idempotency plugin key uniformly.
+ *
+ * Plugin order: registered BEFORE the shared HMAC plugin so a verified
+ * customer JWT stands the HMAC plugin down on dual-auth paths.
  *
  * Promotion path: this verifier is identical in shape to what KP-2 and
  * TD-2 will need. Keep the surface small enough to lift to
@@ -50,7 +59,32 @@ import {
 import { errorResponse } from '@kmv/platform-shared/envelope';
 
 const BRIEFINGS_PREFIX = '/v1/briefings';
+const AUTHORITIES_PREFIX = '/v1/authorities';
 const APP_ID_RE = /^[a-z0-9_]{2,40}$/;
+
+type PathClass = 'mandatory' | 'optional' | 'none';
+
+/**
+ * Classify a request path for customer-JWT handling:
+ *   - `mandatory` — customer-JWT required (briefings).
+ *   - `optional`  — customer-JWT accepted, HMAC also allowed (the Console
+ *                   authority surface, minus the HMAC-only `/validate` leaf).
+ *   - `none`      — this plugin ignores the path.
+ */
+function classifyPath(rawUrl: string): PathClass {
+  const q = rawUrl.indexOf('?');
+  const path = q === -1 ? rawUrl : rawUrl.slice(0, q);
+  if (path === BRIEFINGS_PREFIX || path.startsWith(`${BRIEFINGS_PREFIX}/`)) {
+    return 'mandatory';
+  }
+  if (path === AUTHORITIES_PREFIX) return 'optional'; // GET list · POST grant
+  if (path.startsWith(`${AUTHORITIES_PREFIX}/`)) {
+    // `/v1/authorities/:id` (GET) and `/v1/authorities/:id/revoke` are
+    // Console-facing; `/v1/authorities/:id/validate` is HMAC-only.
+    return path.endsWith('/validate') ? 'none' : 'optional';
+  }
+  return 'none';
+}
 
 export type CustomerSessionKind = 'primary' | 'stepup';
 export type CustomerTier = 'tier_0' | 'tier_1' | 'tier_2';
@@ -88,12 +122,6 @@ function headerString(value: string | string[] | undefined): string | undefined 
   return Array.isArray(value) ? value[0] : value;
 }
 
-function isPathUnderBriefings(url: string): boolean {
-  const q = url.indexOf('?');
-  const path = q === -1 ? url : url.slice(0, q);
-  return path === BRIEFINGS_PREFIX || path.startsWith(`${BRIEFINGS_PREFIX}/`);
-}
-
 function asStringArray(claim: unknown): readonly string[] | undefined {
   if (!Array.isArray(claim)) return undefined;
   for (const v of claim) {
@@ -115,10 +143,15 @@ const customerJwtPluginImpl: FastifyPluginAsync<CustomerJwtPluginConfig> = async
   config
 ) => {
   fastify.addHook('preHandler', async (request, reply) => {
-    if (!isPathUnderBriefings(request.url)) return;
+    const pathClass = classifyPath(request.url);
+    if (pathClass === 'none') return;
 
     const authHeader = headerString(request.headers['authorization']);
-    if (!authHeader || !authHeader.toLowerCase().startsWith('bearer ')) {
+    const isBearer = !!authHeader && authHeader.toLowerCase().startsWith('bearer ');
+    if (!isBearer) {
+      // Optional (Console authority) path with no Bearer token → defer to the
+      // shared HMAC plugin. Mandatory (briefings) path → customer-JWT required.
+      if (pathClass === 'optional') return;
       return reply
         .code(401)
         .send(
@@ -130,7 +163,7 @@ const customerJwtPluginImpl: FastifyPluginAsync<CustomerJwtPluginConfig> = async
         );
     }
 
-    const token = authHeader.slice('bearer '.length).trim();
+    const token = authHeader!.slice('bearer '.length).trim();
     if (token.length === 0) {
       return reply
         .code(401)
