@@ -145,6 +145,31 @@ export async function revokeActiveAuthority(
 }
 
 /**
+ * All currently-active authorities for one account — the cascade-revocation
+ * worker's working set (H-3b). Unpaginated: an account holds few authorities
+ * and the cascade must see every one. Ordered for deterministic processing.
+ */
+export async function listActiveAuthoritiesForAccount(
+  db: DbOrTx,
+  accountUuid: string
+): Promise<readonly DelegatedAuthorityRow[]> {
+  const rows = (await db
+    .select()
+    .from(delegatedAuthorities)
+    .where(
+      and(
+        eq(delegatedAuthorities.accountUuid, accountUuid),
+        eq(delegatedAuthorities.status, 'active')
+      )
+    )
+    .orderBy(
+      desc(delegatedAuthorities.issuedAt),
+      desc(delegatedAuthorities.id)
+    )) as unknown as DelegatedAuthorityRow[];
+  return rows;
+}
+
+/**
  * Sum cumulative spend for one authority+scope within a period window.
  * `authority_usage` is written by the H-4 dispatch path; at H-3 it is empty,
  * so the period-limit check in validation always sees 0.

@@ -42,6 +42,8 @@ export const actions = pgTable(
     traceparent: text('traceparent'),
     appId: text('app_id').notNull(),
     appCorrelationId: text('app_correlation_id'),
+    // Shared cross-rail business-operation id (§A.11). Added by migration 0009.
+    businessOpId: text('business_op_id'),
     idempotencyKey: text('idempotency_key').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     completedAt: timestamp('completed_at', { withTimezone: true }),

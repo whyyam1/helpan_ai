@@ -118,6 +118,14 @@ describe.skipIf(!hasUrl)('POST /v1/authorities/:id/revoke (real Postgres)', () =
 
     // genesis + agent.register + authority.issue + authority.revoke = 3 real.
     expect(await countAuditEntries(handle)).toBe(3);
+
+    // §A.11: authority.revoke row carries agent_id + delegated_authority_jti.
+    const revokeRow = (await handle.sql`
+      SELECT agent_id, delegated_authority_jti
+      FROM audit_log WHERE action = 'authority.revoke'
+    `) as unknown as { agent_id: string | null; delegated_authority_jti: string | null }[];
+    expect(revokeRow[0]?.agent_id).toMatch(/^agt_[0-9A-HJKMNP-TV-Z]{26}$/);
+    expect(revokeRow[0]?.delegated_authority_jti).toBe(id);
   });
 
   it('defaults reason to user_initiated when the body is empty', async () => {

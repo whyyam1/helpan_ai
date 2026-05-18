@@ -265,13 +265,16 @@ export async function issueAuthority(
       action: 'authority.issue',
       resourceType: 'delegated_authority',
       resourceId: built.jti,
+      // §A.11: the agent the authority empowers + the authority's own jti,
+      // in their indexed columns so the cross-rail audit join resolves.
+      agentId: args.agentId,
+      delegatedAuthorityJti: built.jti,
       appId: audit.appId,
       requestId: audit.requestId,
       ...(audit.traceparent ? { traceparent: audit.traceparent } : {}),
       outcome: 'success',
       initiatedBy: 'human',
       detail: {
-        agent_id: args.agentId,
         scope_ids: args.scopes.map((s) => s.scope_id),
         ttl_seconds: args.ttlSeconds,
         step_up_jti: stepUpJti ?? null,
@@ -522,6 +525,8 @@ export async function revokeAuthority(
       action: 'authority.revoke',
       resourceType: 'delegated_authority',
       resourceId: authorityId,
+      agentId: revoked.agentId,
+      delegatedAuthorityJti: authorityId,
       appId: audit.appId,
       requestId: audit.requestId,
       ...(audit.traceparent ? { traceparent: audit.traceparent } : {}),
@@ -530,7 +535,6 @@ export async function revokeAuthority(
       detail: {
         reason: args.reason,
         ...(args.detail !== undefined ? { detail: args.detail } : {}),
-        agent_id: revoked.agentId,
       },
     });
     return revoked;

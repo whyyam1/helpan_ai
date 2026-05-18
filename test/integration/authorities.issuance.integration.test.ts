@@ -119,6 +119,15 @@ describe.skipIf(!hasUrl)('POST /v1/authorities (real Postgres)', () => {
     });
     // audit entry: agent.register (seed) + authority.issue.
     expect(await countAuditEntries(handle)).toBe(2);
+
+    // §A.11: the authority.issue row carries agent_id + delegated_authority_jti
+    // in their indexed columns (H-3.1 audit-writer extension).
+    const issueRow = (await handle.sql`
+      SELECT agent_id, delegated_authority_jti
+      FROM audit_log WHERE action = 'authority.issue'
+    `) as unknown as { agent_id: string | null; delegated_authority_jti: string | null }[];
+    expect(issueRow[0]?.agent_id).toBe(agentId);
+    expect(issueRow[0]?.delegated_authority_jti).toBe(data.id);
   });
 
   it('issues a money-scope authority with a valid step-up token → 201', async () => {

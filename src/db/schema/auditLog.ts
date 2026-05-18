@@ -38,6 +38,8 @@ export const auditLog = pgTable(
     targetOperation: text('target_operation'),
     requestId: text('request_id').notNull(),
     traceparent: text('traceparent'),
+    // Shared cross-rail business-operation id (§A.11). Added by migration 0009.
+    businessOpId: text('business_op_id'),
     ipAddress: inet('ip_address'),
     outcome: text('outcome').notNull(),
     detail: jsonb('detail'),

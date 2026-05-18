@@ -15,9 +15,15 @@
  * inside the same transaction, so concurrent appenders queue per-rail at the
  * Postgres level — cost is microseconds, scope is the chain only.
  *
- * H-2 callers: the briefings handlers, for create / update / revoke. H-4 will
- * extend to action dispatch with the same writer; no changes to this module
- * are anticipated.
+ * H-2 callers: the briefings handlers, for create / update / revoke. H-3
+ * added authority issue / revoke entries. H-3.1 extends the input with the
+ * §A.11 cross-rail audit fields (`agentId`, `delegatedAuthorityJti`,
+ * `targetRail`, `targetOperation`, `businessOpId`) — all optional, all
+ * written to their own columns. They are NOT folded into `entry_hash`:
+ * that stays `id | actor_id | action | resource_id | detail | previous_hash`,
+ * consistent with the existing partial-coverage design (actor_type,
+ * outcome, account_uuid, etc. are likewise unhashed). A full-column-hash
+ * hardening is a separate item (RECAP §6).
  */
 
 import { createHash } from 'node:crypto';
@@ -34,6 +40,7 @@ const AUDIT_CHAIN_LOCK_KEY = 7268010825743210n; // 'HELPANAI' as ascii roughly
 
 export type AuditActorType = 'user' | 'agent' | 'operator' | 'system';
 export type AuditOutcome = 'success' | 'failure';
+export type AuditTargetRail = 'kipkiren_pay' | 'identiti' | 'todoku';
 
 export interface AppendAuditEntryInput {
   readonly actorType: AuditActorType;
@@ -49,6 +56,18 @@ export interface AppendAuditEntryInput {
   readonly outcome: AuditOutcome;
   readonly detail?: Record<string, unknown> | undefined;
   readonly initiatedBy?: 'human' | 'agent' | 'system' | undefined;
+  // §A.11 cross-rail audit fields (H-3.1). All optional — populated where the
+  // operation is agent-initiated and/or cross-rail; NULL otherwise.
+  /** The agent that acted (NOT the agent acted upon). */
+  readonly agentId?: string | undefined;
+  /** The delegated authority that authorised an agent action. */
+  readonly delegatedAuthorityJti?: string | undefined;
+  /** Target rail for dispatched actions (H-4). */
+  readonly targetRail?: AuditTargetRail | undefined;
+  /** Target operation on the target rail (H-4). */
+  readonly targetOperation?: string | undefined;
+  /** Shared cross-rail business-operation id — the §A.11 forensic join key. */
+  readonly businessOpId?: string | undefined;
 }
 
 export interface AppendedAuditEntry {
@@ -132,6 +151,8 @@ export async function appendAuditEntry(
     INSERT INTO audit_log (
       id, app_id, actor_type, actor_id, account_uuid, action,
       resource_type, resource_id,
+      agent_id, delegated_authority_jti, target_rail, target_operation,
+      business_op_id,
       request_id, traceparent, outcome, detail,
       previous_hash, entry_hash, initiated_by
     ) VALUES (
@@ -143,6 +164,11 @@ export async function appendAuditEntry(
       ${input.action},
       ${input.resourceType ?? null},
       ${input.resourceId ?? null},
+      ${input.agentId ?? null},
+      ${input.delegatedAuthorityJti ?? null},
+      ${input.targetRail ?? null},
+      ${input.targetOperation ?? null},
+      ${input.businessOpId ?? null},
       ${input.requestId},
       ${input.traceparent ?? null},
       ${input.outcome},
