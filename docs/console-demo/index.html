@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0D5C4E">
+<title>Helpan Console — Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Helpan Lunch Drop brand tokens — Console spec §8.
+     primary = teal; accent = amber; danger = revoke red. */
+  --teal: #0D5C4E;
+  --teal-d: #084033;
+  --teal-l: #E8F3F1;
+  --amber: #C47A1A;
+  --amber-l: #FBF3E8;
+  --danger: #8B1A1A;
+  --danger-l: #F9ECEC;
+  --ink: #111;
+  --ink-2: #3a3a3a;
+  --mid: #6b6b6b;
+  --soft: #9a9a9a;
+  --rule: #E5E2DC;
+  --bg: #F7F4EE;
+  --surface: #FFFFFF;
+  --shadow: 0 2px 12px rgba(13, 92, 78, 0.06), 0 1px 3px rgba(0,0,0,0.04);
+  --shadow-lift: 0 8px 30px rgba(13, 92, 78, 0.14), 0 2px 6px rgba(0,0,0,0.06);
+  --radius-card: 16px;
+  --radius-btn: 12px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body { height: 100%; }
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* Phone-frame container — mobile = fullscreen; desktop = centered phone shape. */
+.shell {
+  max-width: 430px;
+  margin: 0 auto;
+  min-height: 100vh;
+  background: var(--bg);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+@media (min-width: 768px) {
+  body { background: linear-gradient(135deg, #0D5C4E 0%, #084033 100%); padding: 32px 0; }
+  .shell {
+    min-height: calc(100vh - 64px);
+    max-height: 900px;
+    border-radius: 36px;
+    overflow: hidden;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.35), 0 8px 20px rgba(0,0,0,0.2);
+    border: 8px solid #1a1a1a;
+  }
+}
+
+/* ─── HEADER ─── */
+.hdr {
+  background: var(--teal);
+  color: #fff;
+  padding: calc(var(--safe-top) + 18px) 22px 16px;
+  position: relative;
+  overflow: hidden;
+}
+.hdr::after {
+  content: '';
+  position: absolute;
+  right: -80px; top: -80px;
+  width: 220px; height: 220px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.06);
+}
+.hdr .brand {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
+  opacity: 0.78;
+}
+.hdr .brand-dot { width: 6px; height: 6px; border-radius: 50%; background: #fff; opacity: 0.9; }
+.hdr h1 { font-size: 22px; font-weight: 700; margin-top: 6px; letter-spacing: -0.3px; }
+.hdr .sub { font-size: 13px; opacity: 0.78; margin-top: 4px; max-width: 320px; }
+
+/* ─── TABS ─── */
+.tabs {
+  display: flex;
+  background: var(--surface);
+  border-bottom: 1px solid var(--rule);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.tab {
+  flex: 1;
+  padding: 14px 8px;
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mid);
+  cursor: pointer;
+  position: relative;
+  letter-spacing: 0.2px;
+  transition: color 0.15s;
+}
+.tab.active { color: var(--teal); }
+.tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px; left: 18%; right: 18%;
+  height: 3px;
+  background: var(--teal);
+  border-radius: 3px 3px 0 0;
+}
+.tab-badge {
+  display: inline-block;
+  background: var(--teal-l);
+  color: var(--teal);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 8px;
+  margin-left: 4px;
+  vertical-align: 1px;
+}
+.tab.active .tab-badge { background: var(--teal); color: #fff; }
+
+/* ─── BODY / SCROLL ─── */
+.scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 16px calc(var(--safe-bottom) + 28px);
+  -webkit-overflow-scrolling: touch;
+}
+.view { display: none; }
+.view.active { display: block; animation: fadeIn 0.18s ease-out; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ─── GROUP HEADING ─── */
+.group {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.6px;
+  color: var(--soft);
+  text-transform: uppercase;
+  padding: 8px 4px 10px;
+}
+
+/* ─── AUTHORITY CARD ─── */
+.card {
+  background: var(--surface);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow);
+  padding: 18px;
+  margin-bottom: 14px;
+  position: relative;
+}
+.card-head { display: flex; align-items: flex-start; gap: 12px; }
+.icon {
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 15px;
+  flex-shrink: 0;
+  color: #fff;
+}
+.icon.lunch { background: linear-gradient(135deg, #F39C12, #C47A1A); }
+.icon.chapaa { background: linear-gradient(135deg, #16a085, #0E7A68); }
+.icon.klokd { background: linear-gradient(135deg, #1A3C5C, #0d2a44); }
+.icon.family { background: linear-gradient(135deg, #8E44AD, #6c2d91); }
+.icon.pesa { background: linear-gradient(135deg, #95a5a6, #7f8c8d); }
+
+.title-block { flex: 1; min-width: 0; }
+.title { font-size: 16px; font-weight: 700; color: var(--ink); letter-spacing: -0.1px; }
+.subtitle { font-size: 12.5px; color: var(--mid); margin-top: 2px; }
+
+.pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 4px 9px;
+  border-radius: 20px;
+}
+.pill.active { background: #E0F2EC; color: #0E7A68; }
+.pill.revoked { background: #FBE7E7; color: #8B1A1A; }
+.pill.expired { background: #EDEDEC; color: #6b6b6b; }
+.pill.behavioural {
+  background: var(--amber-l); color: var(--amber);
+  margin-left: 6px;
+}
+
+/* meta row */
+.meta {
+  display: flex; gap: 14px;
+  margin: 14px 0 12px;
+  font-size: 12px;
+  color: var(--mid);
+  border-top: 1px dashed var(--rule);
+  border-bottom: 1px dashed var(--rule);
+  padding: 10px 0;
+}
+.meta-cell { flex: 1; }
+.meta-label { font-size: 10px; font-weight: 700; letter-spacing: 1.2px; color: var(--soft); text-transform: uppercase; }
+.meta-value { font-size: 12.5px; color: var(--ink-2); margin-top: 3px; font-weight: 500; }
+
+/* scopes */
+.scopes { margin-top: 12px; }
+.scope {
+  display: flex; align-items: flex-start; gap: 9px;
+  padding: 7px 0;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.scope::before {
+  content: '';
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--teal);
+  margin-top: 7px;
+  flex-shrink: 0;
+}
+.scope-detail {
+  display: block;
+  color: var(--mid);
+  font-size: 11.5px;
+  margin-top: 2px;
+}
+
+/* actions row */
+.actions { display: flex; gap: 10px; margin-top: 14px; }
+.btn {
+  flex: 1;
+  padding: 11px 12px;
+  border: none;
+  border-radius: var(--radius-btn);
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.1px;
+  transition: transform 0.06s, box-shadow 0.15s;
+}
+.btn:active { transform: scale(0.985); }
+.btn-revoke { background: var(--danger-l); color: var(--danger); }
+.btn-revoke:hover { background: #f4dada; }
+.btn-secondary { background: #F0F0EE; color: var(--ink-2); }
+.btn-primary { background: var(--teal); color: #fff; }
+.btn-primary:hover { background: var(--teal-d); }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-danger:hover { background: #6e1414; }
+
+/* ─── ACTIVITY ─── */
+.activity-row {
+  background: var(--surface);
+  padding: 14px 16px;
+  border-radius: 12px;
+  margin-bottom: 10px;
+  box-shadow: var(--shadow);
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.activity-icon {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+.activity-body { flex: 1; min-width: 0; }
+.activity-action { font-size: 13.5px; color: var(--ink); font-weight: 500; line-height: 1.35; }
+.activity-meta { font-size: 11.5px; color: var(--mid); margin-top: 4px; }
+.activity-status { font-size: 10px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
+.s-ok { color: #0E7A68; }
+.s-fail { color: #8B1A1A; }
+
+/* ─── EMPTY STATES ─── */
+.empty {
+  text-align: center;
+  padding: 60px 24px;
+  color: var(--mid);
+}
+.empty-icon {
+  width: 56px; height: 56px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: var(--teal-l);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px;
+  color: var(--teal);
+}
+.empty-title { font-size: 16px; font-weight: 600; color: var(--ink-2); margin-bottom: 6px; }
+.empty-body { font-size: 13px; }
+
+/* ─── REVOKE MODAL ─── */
+.backdrop {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(8, 32, 27, 0.55);
+  z-index: 100;
+  align-items: flex-end;
+  justify-content: center;
+  animation: backdropIn 0.18s ease-out;
+}
+.backdrop.open { display: flex; }
+@keyframes backdropIn { from { opacity: 0; } to { opacity: 1; } }
+
+.modal {
+  background: var(--surface);
+  width: 100%;
+  max-width: 430px;
+  border-radius: 22px 22px 0 0;
+  padding: 22px 22px calc(var(--safe-bottom) + 28px);
+  animation: modalIn 0.22s ease-out;
+}
+@media (min-width: 768px) {
+  .backdrop { align-items: center; }
+  .modal { border-radius: 22px; max-width: 380px; }
+}
+@keyframes modalIn { from { transform: translateY(24px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+.modal-icon {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  background: var(--danger-l);
+  color: var(--danger);
+  margin: 4px auto 16px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px;
+  font-weight: 700;
+}
+.modal-title { font-size: 19px; font-weight: 700; text-align: center; color: var(--ink); letter-spacing: -0.2px; }
+.modal-agent { font-size: 13px; color: var(--mid); text-align: center; margin-top: 4px; margin-bottom: 18px; }
+.modal-body { font-size: 14px; color: var(--ink-2); line-height: 1.55; padding: 0 4px; }
+.modal-body strong { color: var(--ink); font-weight: 600; }
+.modal-actions { display: flex; gap: 10px; margin-top: 22px; }
+
+/* ─── FOOTER / LIVE STATUS ─── */
+.foot {
+  background: var(--surface);
+  border-top: 1px solid var(--rule);
+  padding: 14px 18px calc(var(--safe-bottom) + 14px);
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 11px;
+  color: var(--mid);
+}
+.live {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-weight: 600;
+}
+.live-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--soft);
+  position: relative;
+}
+.live.connected .live-dot { background: #0E7A68; box-shadow: 0 0 0 0 rgba(14, 122, 104, 0.6); animation: pulse 2s infinite; }
+.live.error .live-dot { background: var(--danger); }
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(14, 122, 104, 0.6); }
+  70% { box-shadow: 0 0 0 8px rgba(14, 122, 104, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(14, 122, 104, 0); }
+}
+.foot-brand { font-weight: 700; color: var(--teal); letter-spacing: 0.3px; }
+
+/* preview ribbon */
+.ribbon {
+  position: absolute;
+  top: 12px; right: -34px;
+  transform: rotate(35deg);
+  background: var(--amber);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  padding: 3px 36px;
+  z-index: 5;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- HEADER -->
+  <div class="hdr">
+    <div class="ribbon">Preview</div>
+    <div class="brand"><span class="brand-dot"></span>Helpan Console</div>
+    <h1>Your AI agents</h1>
+    <div class="sub">Every permission you've given an AI to act on your behalf, across every Kirimon app.</div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" data-tab="active">Active <span class="tab-badge">3</span></button>
+    <button class="tab" data-tab="activity">Activity</button>
+    <button class="tab" data-tab="history">History</button>
+  </div>
+
+  <!-- SCROLL AREA -->
+  <div class="scroll">
+
+    <!-- ACTIVE -->
+    <div class="view active" data-view="active">
+      <div class="group">Active permissions</div>
+
+      <!-- Lunch Drop -->
+      <div class="card">
+        <div class="card-head">
+          <div class="icon lunch">LD</div>
+          <div class="title-block">
+            <div class="title">Helpan Lunch Drop</div>
+            <div class="subtitle">
+              <span class="pill active">●&nbsp;Active</span>
+            </div>
+          </div>
+        </div>
+        <div class="meta">
+          <div class="meta-cell"><div class="meta-label">Granted</div><div class="meta-value">2 days ago</div></div>
+          <div class="meta-cell"><div class="meta-label">Expires</div><div class="meta-value">in 5 days</div></div>
+          <div class="meta-cell"><div class="meta-label">Last used</div><div class="meta-value">12 min ago</div></div>
+        </div>
+        <div class="scopes">
+          <div class="scope">
+            <div>
+              Place orders on your behalf
+              <span class="scope-detail">Up to KES 500 per order · KES 5,000 per week</span>
+            </div>
+          </div>
+          <div class="scope">
+            <div>
+              Read your delivery preferences
+              <span class="scope-detail">Address book, dietary tags, time-of-day defaults</span>
+            </div>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="btn btn-revoke" onclick="openRevoke('Helpan Lunch Drop', 'order placement and delivery preferences')">Revoke</button>
+          <button class="btn btn-secondary" onclick="switchTab('activity')">View activity</button>
+        </div>
+      </div>
+
+      <!-- Chapaa with behavioural friction -->
+      <div class="card">
+        <div class="card-head">
+          <div class="icon chapaa">CH</div>
+          <div class="title-block">
+            <div class="title">Helpan Chapaa</div>
+            <div class="subtitle">
+              <span class="pill active">●&nbsp;Active</span>
+              <span class="pill behavioural">Behavioural data</span>
+            </div>
+          </div>
+        </div>
+        <div class="meta">
+          <div class="meta-cell"><div class="meta-label">Granted</div><div class="meta-value">3 weeks ago</div></div>
+          <div class="meta-cell"><div class="meta-label">Expires</div><div class="meta-value">in 1 month</div></div>
+          <div class="meta-cell"><div class="meta-label">Last used</div><div class="meta-value">2 hours ago</div></div>
+        </div>
+        <div class="scopes">
+          <div class="scope">
+            <div>
+              Round-up your spend into a savings goal
+              <span class="scope-detail">Up to KES 30 per day · into goal "Wedding"</span>
+            </div>
+          </div>
+          <div class="scope">
+            <div>
+              Read your saving and spending patterns
+              <span class="scope-detail">When, how often, how much — used to nudge, not to share</span>
+            </div>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="btn btn-revoke" onclick="openRevoke('Helpan Chapaa', 'round-up savings and spending pattern reads')">Revoke</button>
+          <button class="btn btn-secondary" onclick="switchTab('activity')">View activity</button>
+        </div>
+      </div>
+
+      <!-- Klokd -->
+      <div class="card">
+        <div class="card-head">
+          <div class="icon klokd">KL</div>
+          <div class="title-block">
+            <div class="title">Helpan Klokd</div>
+            <div class="subtitle">
+              <span class="pill active">●&nbsp;Active</span>
+            </div>
+          </div>
+        </div>
+        <div class="meta">
+          <div class="meta-cell"><div class="meta-label">Granted</div><div class="meta-value">1 week ago</div></div>
+          <div class="meta-cell"><div class="meta-label">Expires</div><div class="meta-value">in 3 weeks</div></div>
+          <div class="meta-cell"><div class="meta-label">Last used</div><div class="meta-value">yesterday</div></div>
+        </div>
+        <div class="scopes">
+          <div class="scope">
+            <div>
+              Hold shift escrow on your behalf
+              <span class="scope-detail">Up to KES 2,500 per shift · KES 50,000 per month</span>
+            </div>
+          </div>
+          <div class="scope">
+            <div>
+              Accept shifts matching your saved preferences
+              <span class="scope-detail">Within 5 km · weekdays only · cleared employers</span>
+            </div>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="btn btn-revoke" onclick="openRevoke('Helpan Klokd', 'shift escrow and acceptance')">Revoke</button>
+          <button class="btn btn-secondary" onclick="switchTab('activity')">View activity</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ACTIVITY -->
+    <div class="view" data-view="activity">
+      <div class="group">Today</div>
+
+      <div class="activity-row">
+        <div class="activity-icon lunch" style="background: linear-gradient(135deg, #F39C12, #C47A1A);">LD</div>
+        <div class="activity-body">
+          <div class="activity-action">Placed an order with PowerMama, Westlands branch — <strong>KES 480</strong></div>
+          <div class="activity-meta">Helpan Lunch Drop · 12 min ago · <span class="activity-status s-ok">Completed</span></div>
+        </div>
+      </div>
+
+      <div class="activity-row">
+        <div class="activity-icon chapaa" style="background: linear-gradient(135deg, #16a085, #0E7A68);">CH</div>
+        <div class="activity-body">
+          <div class="activity-action">Rounded up <strong>KES 6</strong> into your goal <strong>Wedding</strong></div>
+          <div class="activity-meta">Helpan Chapaa · 2 hours ago · <span class="activity-status s-ok">Completed</span></div>
+        </div>
+      </div>
+
+      <div class="activity-row">
+        <div class="activity-icon chapaa" style="background: linear-gradient(135deg, #16a085, #0E7A68);">CH</div>
+        <div class="activity-body">
+          <div class="activity-action">Rounded up <strong>KES 14</strong> into your goal <strong>Wedding</strong></div>
+          <div class="activity-meta">Helpan Chapaa · 4 hours ago · <span class="activity-status s-ok">Completed</span></div>
+        </div>
+      </div>
+
+      <div class="group">Yesterday</div>
+
+      <div class="activity-row">
+        <div class="activity-icon klokd" style="background: linear-gradient(135deg, #1A3C5C, #0d2a44);">KL</div>
+        <div class="activity-body">
+          <div class="activity-action">Accepted shift at <strong>Java House Westgate</strong> — KES 2,400 escrowed</div>
+          <div class="activity-meta">Helpan Klokd · yesterday, 6:42 PM · <span class="activity-status s-ok">Completed</span></div>
+        </div>
+      </div>
+
+      <div class="activity-row">
+        <div class="activity-icon lunch" style="background: linear-gradient(135deg, #F39C12, #C47A1A);">LD</div>
+        <div class="activity-body">
+          <div class="activity-action">Tried to place order at <strong>Mama Oliech</strong> — exceeded KES 500 per-order limit</div>
+          <div class="activity-meta">Helpan Lunch Drop · yesterday, 1:14 PM · <span class="activity-status s-fail">Blocked</span></div>
+        </div>
+      </div>
+
+      <div class="group">Earlier this week</div>
+
+      <div class="activity-row">
+        <div class="activity-icon chapaa" style="background: linear-gradient(135deg, #16a085, #0E7A68);">CH</div>
+        <div class="activity-body">
+          <div class="activity-action">Rounded up <strong>KES 22</strong> into your goal <strong>Wedding</strong></div>
+          <div class="activity-meta">Helpan Chapaa · 3 days ago · <span class="activity-status s-ok">Completed</span></div>
+        </div>
+      </div>
+
+      <div class="activity-row">
+        <div class="activity-icon klokd" style="background: linear-gradient(135deg, #1A3C5C, #0d2a44);">KL</div>
+        <div class="activity-body">
+          <div class="activity-action">Released shift escrow at <strong>Java House Westgate</strong> — KES 2,400 to your wallet</div>
+          <div class="activity-meta">Helpan Klokd · 4 days ago · <span class="activity-status s-ok">Completed</span></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- HISTORY -->
+    <div class="view" data-view="history">
+      <div class="group">Permissions that ended</div>
+
+      <div class="card">
+        <div class="card-head">
+          <div class="icon pesa">PP</div>
+          <div class="title-block">
+            <div class="title">Helpan Pesa Plus</div>
+            <div class="subtitle"><span class="pill revoked">●&nbsp;Revoked</span></div>
+          </div>
+        </div>
+        <div class="meta">
+          <div class="meta-cell"><div class="meta-label">Ended</div><div class="meta-value">11 days ago</div></div>
+          <div class="meta-cell"><div class="meta-label">Reason</div><div class="meta-value">You revoked it</div></div>
+          <div class="meta-cell"><div class="meta-label">Was active</div><div class="meta-value">2 months</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div class="icon family">FD</div>
+          <div class="title-block">
+            <div class="title">Helpan Family Discovery</div>
+            <div class="subtitle"><span class="pill expired">●&nbsp;Expired</span></div>
+          </div>
+        </div>
+        <div class="meta">
+          <div class="meta-cell"><div class="meta-label">Ended</div><div class="meta-value">3 weeks ago</div></div>
+          <div class="meta-cell"><div class="meta-label">Reason</div><div class="meta-value">Token expired</div></div>
+          <div class="meta-cell"><div class="meta-label">Was active</div><div class="meta-value">30 days</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div class="icon lunch">LD</div>
+          <div class="title-block">
+            <div class="title">Helpan Lunch Drop</div>
+            <div class="subtitle"><span class="pill expired">●&nbsp;Account downgraded</span></div>
+          </div>
+        </div>
+        <div class="meta">
+          <div class="meta-cell"><div class="meta-label">Ended</div><div class="meta-value">2 months ago</div></div>
+          <div class="meta-cell"><div class="meta-label">Reason</div><div class="meta-value">KYC tier change</div></div>
+          <div class="meta-cell"><div class="meta-label">Was active</div><div class="meta-value">14 days</div></div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- FOOTER -->
+  <div class="foot">
+    <div class="foot-brand">HELPAN AI</div>
+    <div class="live" id="live"><span class="live-dot"></span><span id="live-text">Checking rail…</span></div>
+  </div>
+
+</div>
+
+<!-- REVOKE MODAL -->
+<div class="backdrop" id="modal">
+  <div class="modal">
+    <div class="modal-icon">!</div>
+    <div class="modal-title">Revoke this permission?</div>
+    <div class="modal-agent" id="modal-agent">Helpan Lunch Drop</div>
+    <div class="modal-body">
+      <strong>This agent will no longer be able to act on your behalf</strong> for <span id="modal-scope">order placement and delivery preferences</span>.
+      <br><br>
+      Actions already in flight will complete; new actions are blocked immediately.
+      <br><br>
+      You can grant permission again at any time.
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeRevoke()">Cancel</button>
+      <button class="btn btn-danger" onclick="closeRevoke()">Confirm revoke</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ──────────────────────────────────────────────────────────────────────
+// Tab switching
+// ──────────────────────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.dataset.view === name));
+  document.querySelector('.scroll').scrollTop = 0;
+}
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => switchTab(t.dataset.tab));
+});
+
+// ──────────────────────────────────────────────────────────────────────
+// Revoke modal
+// ──────────────────────────────────────────────────────────────────────
+function openRevoke(agent, scope) {
+  document.getElementById('modal-agent').textContent = agent;
+  document.getElementById('modal-scope').textContent = scope;
+  document.getElementById('modal').classList.add('open');
+}
+function closeRevoke() {
+  document.getElementById('modal').classList.remove('open');
+}
+document.getElementById('modal').addEventListener('click', (e) => {
+  if (e.target.id === 'modal') closeRevoke();
+});
+
+// ──────────────────────────────────────────────────────────────────────
+// Live rail heartbeat — proves the backend is real.
+// Reads the Railway URL from a query param (?api=https://...) so the
+// demo URL is portable. Defaults to a placeholder.
+// ──────────────────────────────────────────────────────────────────────
+(async () => {
+  const params = new URLSearchParams(window.location.search);
+  const apiBase = params.get('api') || 'https://helpan-ai-rail.up.railway.app';
+  const live = document.getElementById('live');
+  const text = document.getElementById('live-text');
+  try {
+    const t0 = performance.now();
+    const res = await fetch(`${apiBase}/v1/health`, { method: 'GET' });
+    const ms = Math.round(performance.now() - t0);
+    if (res.ok) {
+      live.classList.add('connected');
+      text.textContent = `Rail live · ${ms}ms`;
+    } else {
+      live.classList.add('error');
+      text.textContent = `Rail responded ${res.status}`;
+    }
+  } catch (err) {
+    live.classList.add('error');
+    text.textContent = 'Rail unreachable';
+  }
+})();
+</script>
+
+</body>
+</html>
