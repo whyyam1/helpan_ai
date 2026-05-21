@@ -52,6 +52,9 @@ import { operatorAgentsRoutes } from './modules/operatorAgents/routes.js';
 import { operatorSafetyPoliciesRoutes } from './modules/operatorSafetyPolicies/routes.js';
 import { operatorAuditRoutes } from './modules/operatorAudit/routes.js';
 import { authoritiesRoutes } from './modules/authorities/routes.js';
+import { actionsRoutes } from './modules/actions/routes.js';
+import { buildProductionDispatchers } from './lib/dispatchers/registry.js';
+import type { DispatcherRegistry } from './lib/dispatchers/dispatcher.js';
 import {
   createEnvWebhookTargetResolver,
   type WebhookTargetResolver,
@@ -89,6 +92,8 @@ export interface BuildAppOverrides {
   readonly kafkaProducer?: KafkaProducerLike;
   /** Inject a webhook-target resolver; defaults to env-driven. */
   readonly webhookTargets?: WebhookTargetResolver;
+  /** Inject target-rail dispatchers (H-4). In-memory in tests; HTTP in prod. */
+  readonly dispatchers?: DispatcherRegistry;
 }
 
 export interface BuildAppOptions {
@@ -223,6 +228,13 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
     issuer: config.identiti.issuer,
   });
 
+  // Target-rail dispatchers (H-4). Tests inject a registry of in-memory
+  // dispatchers; production builds HTTP dispatchers from `config.outboundDispatch`,
+  // falling back to `createUnconfiguredDispatcher` per rail when its URL/secret
+  // are empty.
+  const dispatchers: DispatcherRegistry =
+    overrides?.dispatchers ?? buildProductionDispatchers(config.outboundDispatch);
+
   await app.register(
     async (v1) => {
       await v1.register(healthRoutes, { serviceVersion: config.serviceVersion });
@@ -239,6 +251,12 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
         issuer: config.identiti.issuer,
         helpanAudience: config.helpan.jwtAudience,
         daKid: config.identiti.daKid,
+      });
+      await v1.register(actionsRoutes, {
+        dispatchers,
+        daKeyResolver: identitiKeyResolver,
+        issuer: config.identiti.issuer,
+        ...(kafkaProducer ? { kafka: kafkaProducer } : {}),
       });
     },
     { prefix: '/v1' }

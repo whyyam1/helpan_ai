@@ -75,6 +75,13 @@ export function makeTestConfig(overrides: Partial<AppConfig> = {}): AppConfig {
       brokers: [],
       clientId: 'helpan-ai-rail-test',
     },
+    outboundDispatch: {
+      kipkirenPay: { baseUrl: '', dispatchPath: '/v1/dispatch', appId: 'helpan_ai', hmacSecret: '' },
+      todoku: { baseUrl: '', dispatchPath: '/v1/dispatch', appId: 'helpan_ai', hmacSecret: '' },
+      identiti: { baseUrl: '', dispatchPath: '/v1/dispatch', appId: 'helpan_ai', hmacSecret: '' },
+      timestampHeader: 'x-helpan-timestamp',
+      timeoutMs: 15000,
+    },
     ...overrides,
   } satisfies AppConfig);
 }
@@ -141,6 +148,8 @@ export function makeTestCredentialStore(): AppCredentialStore {
             'helpan:authorities:issue',
             'helpan:authority:validate',
             'helpan:authorities:revoke',
+            'helpan:actions:dispatch',
+            'helpan:actions:read',
           ],
           status: 'active',
         };

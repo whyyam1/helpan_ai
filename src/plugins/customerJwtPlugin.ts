@@ -60,6 +60,7 @@ import { errorResponse } from '@kmv/platform-shared/envelope';
 
 const BRIEFINGS_PREFIX = '/v1/briefings';
 const AUTHORITIES_PREFIX = '/v1/authorities';
+const ACTIONS_PREFIX = '/v1/actions';
 const APP_ID_RE = /^[a-z0-9_]{2,40}$/;
 
 type PathClass = 'mandatory' | 'optional' | 'none';
@@ -68,8 +69,12 @@ type PathClass = 'mandatory' | 'optional' | 'none';
  * Classify a request path for customer-JWT handling:
  *   - `mandatory` — customer-JWT required (briefings).
  *   - `optional`  — customer-JWT accepted, HMAC also allowed (the Console
- *                   authority surface, minus the HMAC-only `/validate` leaf).
+ *                   authority surface, minus the HMAC-only `/validate` leaf;
+ *                   and `GET /v1/actions[/:id]` for the Console Activity tab).
  *   - `none`      — this plugin ignores the path.
+ *
+ * `POST /v1/actions/dispatch` is HMAC-only — the consuming-app server signs
+ * on behalf of its agent, never the Console.
  */
 function classifyPath(rawUrl: string): PathClass {
   const q = rawUrl.indexOf('?');
@@ -82,6 +87,14 @@ function classifyPath(rawUrl: string): PathClass {
     // `/v1/authorities/:id` (GET) and `/v1/authorities/:id/revoke` are
     // Console-facing; `/v1/authorities/:id/validate` is HMAC-only.
     return path.endsWith('/validate') ? 'none' : 'optional';
+  }
+  // H-4 actions:
+  //   POST /v1/actions/dispatch  → HMAC-only (`none` from this plugin's view).
+  //   GET  /v1/actions           → Console + operator (dual-auth).
+  //   GET  /v1/actions/:id       → Console + operator (dual-auth).
+  if (path === ACTIONS_PREFIX) return 'optional';
+  if (path.startsWith(`${ACTIONS_PREFIX}/`)) {
+    return path.endsWith('/dispatch') ? 'none' : 'optional';
   }
   return 'none';
 }

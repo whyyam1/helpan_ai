@@ -85,6 +85,40 @@ export interface AppConfig {
     readonly brokers: readonly string[];
     readonly clientId: string;
   };
+
+  /**
+   * Outbound dispatch configuration (H-4). Helpan AI is a tenant at each
+   * relying rail (KP / Todoku / Identiti) and signs forwarded dispatches
+   * with the corresponding HMAC secret. Each rail's three values are
+   * INDEPENDENTLY optional:
+   *   - URL empty → that target rail's dispatcher returns failed with
+   *     `TARGET_RAIL_UNCONFIGURED`. The rail still boots and the rest of
+   *     `POST /actions/dispatch` (validate / audit / persist) still runs.
+   *   - URL set + secret empty → handled the same way (no live dispatch).
+   *
+   * This mirrors the H-5 webhook fan-out and H-3 issuance disabled-by-empty
+   * patterns: every external dep is opt-in.
+   */
+  readonly outboundDispatch: {
+    readonly kipkirenPay: OutboundRailConfig;
+    readonly todoku: OutboundRailConfig;
+    readonly identiti: OutboundRailConfig;
+    /** Outbound HMAC timestamp header — same value for all target rails. */
+    readonly timestampHeader: string;
+    /** Per-dispatch HTTP timeout in ms (default 15000). */
+    readonly timeoutMs: number;
+  };
+}
+
+export interface OutboundRailConfig {
+  /** Base URL of the target rail (e.g. `https://api.kipkiren.co.ke`). Empty disables. */
+  readonly baseUrl: string;
+  /** Path on the target rail that accepts forwarded dispatches. */
+  readonly dispatchPath: string;
+  /** Helpan AI's tenant `app_id` at the target rail. */
+  readonly appId: string;
+  /** Helpan AI's HMAC secret at the target rail. */
+  readonly hmacSecret: string;
 }
 
 let cached: AppConfig | undefined;
@@ -224,6 +258,34 @@ export function loadConfig(): AppConfig {
     kafka: {
       brokers: parseBrokerList(optional('KAFKA_BROKERS')),
       clientId: optional('KAFKA_CLIENT_ID') ?? 'helpan-ai-rail',
+    },
+
+    outboundDispatch: {
+      kipkirenPay: {
+        baseUrl: optional('HELPAN_KP_URL') ?? '',
+        dispatchPath: optional('HELPAN_KP_DISPATCH_PATH') ?? '/v1/dispatch',
+        appId: optional('HELPAN_KP_APP_ID') ?? 'helpan_ai',
+        hmacSecret: optional('HELPAN_KP_HMAC_SECRET') ?? '',
+      },
+      todoku: {
+        baseUrl: optional('HELPAN_TODOKU_URL') ?? '',
+        dispatchPath: optional('HELPAN_TODOKU_DISPATCH_PATH') ?? '/v1/dispatch',
+        appId: optional('HELPAN_TODOKU_APP_ID') ?? 'helpan_ai',
+        hmacSecret: optional('HELPAN_TODOKU_HMAC_SECRET') ?? '',
+      },
+      identiti: {
+        baseUrl: optional('HELPAN_IDENTITI_URL') ?? '',
+        dispatchPath: optional('HELPAN_IDENTITI_DISPATCH_PATH') ?? '/v1/dispatch',
+        appId: optional('HELPAN_IDENTITI_APP_ID') ?? 'helpan_ai',
+        hmacSecret: optional('HELPAN_IDENTITI_HMAC_SECRET') ?? '',
+      },
+      timestampHeader: optional('HELPAN_OUTBOUND_TIMESTAMP_HEADER') ?? 'x-helpan-timestamp',
+      timeoutMs: intInRange(
+        'HELPAN_DISPATCH_TIMEOUT_MS',
+        optional('HELPAN_DISPATCH_TIMEOUT_MS') ?? '15000',
+        500,
+        60000
+      ),
     },
   };
 

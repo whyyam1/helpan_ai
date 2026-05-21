@@ -19,6 +19,7 @@
 
 import { jwtVerify, type JWTVerifyGetKey, type KeyLike } from 'jose';
 import { appendAuditEntry } from '../../lib/auditWriter.js';
+import { periodWindowKey } from '../../lib/periodWindow.js';
 import {
   EVENT_AUTHORITY_ISSUED,
   EVENT_AUTHORITY_REVOKED,
@@ -359,19 +360,9 @@ export interface ValidateAuthorityResult {
   readonly rejectionReason: RejectionReason | null;
 }
 
-function periodWindowKey(period: string | undefined, now: Date): string {
-  const iso = now.toISOString();
-  if (period === 'monthly') return `${iso.slice(0, 7)}-01`;
-  if (period === 'weekly') {
-    // ISO week start (Monday) as the window key.
-    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-    const day = d.getUTCDay() || 7; // Sun=0 → 7
-    d.setUTCDate(d.getUTCDate() - (day - 1));
-    return d.toISOString().slice(0, 10);
-  }
-  // daily + single_use + default → calendar day.
-  return iso.slice(0, 10);
-}
+// H-4 lifted `periodWindowKey` to `src/lib/periodWindow.ts` so the dispatch
+// path can write to authority_usage using the same window scheme this
+// validator reads from. Single import, identical behaviour.
 
 export async function validateAuthority(
   deps: ValidationDeps,

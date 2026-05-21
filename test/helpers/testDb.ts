@@ -106,6 +106,10 @@ export async function withRealDb(): Promise<RealDbHandle | null> {
  * chain pointer is well-formed for the next test. Idempotent.
  */
 export async function resetTestData(sql: Sql): Promise<void> {
+  // H-4 — actions truncated FIRST because it FK-refs both agents and
+  // delegated_authorities; CASCADE on those would clobber it anyway but
+  // ordering it explicitly keeps the FK chain readable in the test log.
+  await sql`TRUNCATE TABLE actions CASCADE`;
   await sql`TRUNCATE TABLE briefings CASCADE`;
   await sql`TRUNCATE TABLE events_ingested CASCADE`;
   await sql`TRUNCATE TABLE briefing_matches CASCADE`;
@@ -127,6 +131,8 @@ export interface BuildIntegrationAppOptions {
   readonly kafkaProducer?: InMemoryProducer;
   readonly webhookTargets?: WebhookTargetResolver;
   readonly authoritySigner?: DelegatedAuthoritySigner;
+  /** Inject H-4 target-rail dispatchers (in-memory in tests). */
+  readonly dispatchers?: import('../../src/lib/dispatchers/dispatcher.js').DispatcherRegistry;
 }
 
 export interface IntegrationAppHandle {
@@ -157,6 +163,7 @@ export async function buildIntegrationApp(
       kafkaProducer,
       ...(options.webhookTargets ? { webhookTargets: options.webhookTargets } : {}),
       ...(options.authoritySigner ? { authoritySigner: options.authoritySigner } : {}),
+      ...(options.dispatchers ? { dispatchers: options.dispatchers } : {}),
     },
   });
   return { app, keypair, kafka: kafkaProducer };

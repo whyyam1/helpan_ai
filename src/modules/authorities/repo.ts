@@ -12,7 +12,7 @@
  * one transaction.
  */
 
-import { and, desc, eq, lt, or, type SQL } from 'drizzle-orm';
+import { and, desc, eq, lt, or, sql, type SQL } from 'drizzle-orm';
 import { delegatedAuthorities } from '../../db/schema/delegatedAuthorities.js';
 import { authorityUsage } from '../../db/schema/authorityUsage.js';
 import type { Db } from '../../db/client.js';
@@ -192,4 +192,50 @@ export async function getPeriodUsageMinor(
     )
     .limit(1)) as unknown as { cumulative: bigint }[];
   return rows[0]?.cumulative ?? 0n;
+}
+
+/**
+ * Upsert per-period usage on a successful dispatch (H-4). Atomically
+ * adds `amountMinor` to `cumulative_minor`, bumps `call_count`, and sets
+ * `last_used_at = now()`. The (authority_id, scope_id, period_window)
+ * PK on `authority_usage` makes this a stable conflict target.
+ *
+ * `amountMinor` may be 0 — a non-money operation still records one call.
+ *
+ * Caller MUST pass a transaction so usage is committed atomically with
+ * the action row and the audit entry. If the dispatch later fails on the
+ * target rail, the usage is NOT reversed: the spend window is consumed
+ * by the *attempt*, which matches §A.1 JIT semantics ("a single-operation
+ * token is single-operation regardless of outcome").
+ */
+export async function incrementAuthorityUsage(
+  tx: Tx,
+  input: {
+    readonly authorityId: string;
+    readonly scopeId: string;
+    readonly periodWindow: string;
+    readonly amountMinor: bigint;
+  }
+): Promise<void> {
+  await tx
+    .insert(authorityUsage)
+    .values({
+      authorityId: input.authorityId,
+      scopeId: input.scopeId,
+      periodWindow: input.periodWindow,
+      cumulativeMinor: input.amountMinor,
+      callCount: 1,
+    })
+    .onConflictDoUpdate({
+      target: [
+        authorityUsage.authorityId,
+        authorityUsage.scopeId,
+        authorityUsage.periodWindow,
+      ],
+      set: {
+        cumulativeMinor: sql`${authorityUsage.cumulativeMinor} + ${input.amountMinor}`,
+        callCount: sql`${authorityUsage.callCount} + 1`,
+        lastUsedAt: sql`NOW()`,
+      },
+    });
 }
