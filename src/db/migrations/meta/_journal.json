@@ -85,6 +85,13 @@
       "when": 1747872060000,
       "tag": "0012_lunchdrop_scopes",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1747872120000,
+      "tag": "0013_chapaa_scopes",
+      "breakpoints": true
     }
   ]
 }

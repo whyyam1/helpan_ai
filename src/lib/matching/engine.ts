@@ -156,12 +156,18 @@ export function matchEventAgainstBriefings(
 }
 
 // Registered per-app matchers. Add new domains here as each per-app sprint
-// (H-11 Chapaa, H-12 family-discovery) lands.
+// (H-12 family-discovery) lands.
 import { isKlokdShiftBriefing, matchKlokdShiftBriefing } from './klokdShiftMatcher.js';
 import {
   isLunchDropPlanBriefing,
   matchLunchDropPlanBriefing,
 } from './lunchDropPlanMatcher.js';
+import {
+  isGoalAccelerationBriefing,
+  isRoundUpBriefing,
+  matchGoalAccelerationBriefing,
+  matchRoundUpBriefing,
+} from './chapaaMatchers.js';
 
 type DomainMatcher = (
   b: MatchableBriefing,
@@ -179,5 +185,13 @@ const DOMAIN_MATCHERS: Readonly<Record<string, DomainMatcher>> = {
   'lunchdrop.weekly_plan': (b, e) => {
     if (!isLunchDropPlanBriefing(b)) return null;
     return matchLunchDropPlanBriefing(b, e);
+  },
+  'chapaa.round_up_offer': (b, e) => {
+    if (!isRoundUpBriefing(b)) return null;
+    return matchRoundUpBriefing(b, e);
+  },
+  'chapaa.goal_acceleration': (b, e) => {
+    if (!isGoalAccelerationBriefing(b)) return null;
+    return matchGoalAccelerationBriefing(b, e);
   },
 };

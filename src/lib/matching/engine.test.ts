@@ -165,6 +165,51 @@ describe('matchEventAgainstBriefings', () => {
     expect(matchEventAgainstBriefings(event, [klokdBriefing])).toHaveLength(0);
   });
 
+  it('routes chapaa.round_up_offer briefings to the Chapaa round-up matcher', () => {
+    const event: MatchableEvent = {
+      id: 'evt_debit',
+      eventType: 'kp.wallet.debited',
+      appId: 'chapaa',
+      accountUuid: 'acc_00000000-0000-0000-0000-000000000001',
+      payload: { amount_minor: 484700 },
+    };
+    const roundUp: MatchableBriefing = {
+      id: 'brf_roundup',
+      accountUuid: 'acc_00000000-0000-0000-0000-000000000001',
+      appId: 'chapaa',
+      briefingType: 'alert',
+      intent: { domain: 'chapaa.round_up_offer', max_round_up_minor: 20000 },
+    };
+    const results = matchEventAgainstBriefings(event, [roundUp]);
+    expect(results).toHaveLength(1);
+    expect(results[0]!.detail['match_kind']).toBe('chapaa_round_up_offer');
+    expect(results[0]!.detail['computed_round_up_minor']).toBe(5300);
+  });
+
+  it('routes chapaa.goal_acceleration briefings to the goal matcher', () => {
+    const event: MatchableEvent = {
+      id: 'evt_pace',
+      eventType: 'chapaa.goal_pace',
+      appId: 'chapaa',
+      accountUuid: 'acc_00000000-0000-0000-0000-000000000001',
+      payload: { goal_id: 'goal_x', signal: 'weekly_pace_below_target' },
+    };
+    const goalBrief: MatchableBriefing = {
+      id: 'brf_goal',
+      accountUuid: 'acc_00000000-0000-0000-0000-000000000001',
+      appId: 'chapaa',
+      briefingType: 'threshold_watch',
+      intent: {
+        domain: 'chapaa.goal_acceleration',
+        goal_id: 'goal_x',
+        alert_when: 'weekly_pace_below_target',
+      },
+    };
+    const results = matchEventAgainstBriefings(event, [goalBrief]);
+    expect(results).toHaveLength(1);
+    expect(results[0]!.detail['match_kind']).toBe('chapaa_goal_acceleration');
+  });
+
   it('routes lunchdrop.weekly_plan briefings to the Lunch Drop matcher', () => {
     const event: MatchableEvent = {
       id: 'evt_lunch',

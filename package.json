@@ -28,6 +28,7 @@
     "db:seed:helpan-kws": "tsx --env-file=.env scripts/seedHelpanKwsAdmission.ts",
     "db:seed:helpan-klokd": "tsx --env-file=.env scripts/seedHelpanKlokdAdmission.ts",
     "db:seed:helpan-lunchdrop": "tsx --env-file=.env scripts/seedHelpanLunchDropAdmission.ts",
+    "db:seed:helpan-chapaa": "tsx --env-file=.env scripts/seedHelpanChapaaAdmission.ts",
     "db:check": "drizzle-kit check",
     "db:studio": "drizzle-kit studio"
   },
