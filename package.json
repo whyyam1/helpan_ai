@@ -30,6 +30,7 @@
     "db:seed:helpan-lunchdrop": "tsx --env-file=.env scripts/seedHelpanLunchDropAdmission.ts",
     "db:seed:helpan-chapaa": "tsx --env-file=.env scripts/seedHelpanChapaaAdmission.ts",
     "db:seed:helpan-family-discovery": "tsx --env-file=.env scripts/seedHelpanFamilyDiscoveryAdmission.ts",
+    "audit:verify": "tsx --env-file=.env scripts/verifyAuditChain.ts",
     "db:check": "drizzle-kit check",
     "db:studio": "drizzle-kit studio"
   },

@@ -99,6 +99,13 @@
       "when": 1747872180000,
       "tag": "0014_family_discovery_scopes",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1747872240000,
+      "tag": "0015_audit_hash_version",
+      "breakpoints": true
     }
   ]
 }

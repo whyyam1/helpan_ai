@@ -16,6 +16,7 @@ import {
   jsonb,
   timestamp,
   inet,
+  smallint,
   index,
   check,
 } from 'drizzle-orm/pg-core';
@@ -45,6 +46,10 @@ export const auditLog = pgTable(
     detail: jsonb('detail'),
     previousHash: text('previous_hash'),
     entryHash: text('entry_hash').notNull(),
+    // H-15: 1 = legacy composition (pre-H-15 rows incl. genesis);
+    //       2 = current composition covering every persisted column.
+    //       See src/lib/auditWriter.ts → computeEntryHashForVersion.
+    hashVersion: smallint('hash_version').notNull().default(1),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
@@ -77,6 +82,10 @@ export const auditLog = pgTable(
     outcomeCheck: check(
       'audit_log_outcome_chk',
       sql`${t.outcome} IN ('success', 'failure')`
+    ),
+    hashVersionCheck: check(
+      'audit_log_hash_version_chk',
+      sql`${t.hashVersion} IN (1, 2)`
     ),
   })
 );

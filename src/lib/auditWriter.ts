@@ -3,9 +3,26 @@
  *
  * Hash chain invariant (per ERD §1.13 + auditLog.ts):
  *
- *     entry_hash[N] = SHA-256( id | actor_id | action | resource_id |
- *                              detail_canonical | previous_hash )
+ *     entry_hash[N] = SHA-256( <fields per hash_version> )
  *     previous_hash[N] = entry_hash[N-1]
+ *
+ * **Hash versioning (H-15, RECAP §6.18 close).** Two compositions:
+ *
+ *   v1 (legacy):
+ *     id | actor_id | action | resource_id | detail | previous_hash
+ *
+ *   v2 (current):
+ *     "v2" | id | actor_type | actor_id | account_uuid | action |
+ *     resource_type | resource_id | app_id | request_id | traceparent |
+ *     outcome | initiated_by | agent_id | delegated_authority_jti |
+ *     target_rail | target_operation | business_op_id | detail | previous_hash
+ *
+ * The "v2" string prefix is in the v2 hash itself — a v2 row can't be
+ * misinterpreted as v1 even if `hash_version` is tampered. Rows written
+ * before migration 0015 (including the genesis row from migration 0001)
+ * stay at hash_version=1 and verify under v1. New rows are written at
+ * v2. The chain pointer (`previous_hash`) is composition-agnostic — v2
+ * chains off v1 cleanly across the cutover.
  *
  * The chain is seeded by migration 0001's genesis row. The first real entry
  * therefore reads the genesis row's `entry_hash` as its `previous_hash`.
@@ -18,12 +35,8 @@
  * H-2 callers: the briefings handlers, for create / update / revoke. H-3
  * added authority issue / revoke entries. H-3.1 extends the input with the
  * §A.11 cross-rail audit fields (`agentId`, `delegatedAuthorityJti`,
- * `targetRail`, `targetOperation`, `businessOpId`) — all optional, all
- * written to their own columns. They are NOT folded into `entry_hash`:
- * that stays `id | actor_id | action | resource_id | detail | previous_hash`,
- * consistent with the existing partial-coverage design (actor_type,
- * outcome, account_uuid, etc. are likewise unhashed). A full-column-hash
- * hardening is a separate item (RECAP §6).
+ * `targetRail`, `targetOperation`, `businessOpId`) — all optional. Before
+ * H-15 they were stored but unhashed; H-15 brings them under the chain.
  */
 
 import { createHash } from 'node:crypto';
@@ -93,6 +106,20 @@ function canonicalJson(value: unknown): string {
   return `{${parts.join(',')}}`;
 }
 
+/**
+ * Hash version actively written by `appendAuditEntry`. Verifier reads the
+ * stored `hash_version` per row, not this constant — so a future bump to
+ * v3 leaves v2 rows verifying under v2.
+ */
+export const CURRENT_AUDIT_HASH_VERSION = 2 as const;
+
+export type AuditHashVersion = 1 | 2;
+
+/**
+ * v1 composition — `id | actor_id | action | resource_id | detail | previous_hash`.
+ * Preserved verbatim for backward verification of rows written before H-15
+ * (incl. the H-2/H-3/H-3.1/H-3b/H-4 + per-app catalogue admissions).
+ */
 export function computeEntryHash(parts: {
   readonly id: string;
   readonly actorId: string;
@@ -111,6 +138,86 @@ export function computeEntryHash(parts: {
     parts.previousHash,
   ].join('|');
   return createHash('sha256').update(input, 'utf8').digest('hex');
+}
+
+/**
+ * v2 composition — covers every persisted column except `created_at`
+ * (which is wall-clock and would make the hash flap on a re-insert /
+ * timezone change). Order is locked; do not reorder without bumping to v3.
+ */
+export interface V2HashInput {
+  readonly id: string;
+  readonly actorType: string;
+  readonly actorId: string;
+  readonly accountUuid?: string | null | undefined;
+  readonly action: string;
+  readonly resourceType?: string | null | undefined;
+  readonly resourceId?: string | null | undefined;
+  readonly appId?: string | null | undefined;
+  readonly requestId: string;
+  readonly traceparent?: string | null | undefined;
+  readonly outcome: string;
+  readonly initiatedBy?: string | null | undefined;
+  readonly agentId?: string | null | undefined;
+  readonly delegatedAuthorityJti?: string | null | undefined;
+  readonly targetRail?: string | null | undefined;
+  readonly targetOperation?: string | null | undefined;
+  readonly businessOpId?: string | null | undefined;
+  readonly detail?: Record<string, unknown> | null | undefined;
+  readonly previousHash: string;
+}
+
+export function computeEntryHashV2(parts: V2HashInput): string {
+  const detailCanonical = canonicalJson(parts.detail ?? {});
+  const input = [
+    'v2',
+    parts.id,
+    parts.actorType,
+    parts.actorId,
+    parts.accountUuid ?? '',
+    parts.action,
+    parts.resourceType ?? '',
+    parts.resourceId ?? '',
+    parts.appId ?? '',
+    parts.requestId,
+    parts.traceparent ?? '',
+    parts.outcome,
+    parts.initiatedBy ?? '',
+    parts.agentId ?? '',
+    parts.delegatedAuthorityJti ?? '',
+    parts.targetRail ?? '',
+    parts.targetOperation ?? '',
+    parts.businessOpId ?? '',
+    detailCanonical,
+    parts.previousHash,
+  ].join('|');
+  return createHash('sha256').update(input, 'utf8').digest('hex');
+}
+
+/**
+ * Compute the hash for a row using its declared `hash_version`. Used by
+ * the verifier — the writer always uses CURRENT_AUDIT_HASH_VERSION
+ * directly.
+ */
+export function computeEntryHashForVersion(
+  version: AuditHashVersion,
+  parts: V2HashInput
+): string {
+  if (version === 1) {
+    return computeEntryHash({
+      id: parts.id,
+      actorId: parts.actorId,
+      action: parts.action,
+      ...(parts.resourceId !== null && parts.resourceId !== undefined
+        ? { resourceId: parts.resourceId }
+        : {}),
+      ...(parts.detail !== null && parts.detail !== undefined
+        ? { detail: parts.detail }
+        : {}),
+      previousHash: parts.previousHash,
+    });
+  }
+  return computeEntryHashV2(parts);
 }
 
 interface LatestHashRow {
@@ -136,11 +243,27 @@ export async function appendAuditEntry(
   const previousHash = latest[0]!.entry_hash;
 
   const id = generateUlid();
-  const entryHash = computeEntryHash({
+  // H-15: writer pins to v2. Verifier reads the per-row `hash_version` and
+  // selects the composition; this constant is the only place that needs to
+  // change when we bump to v3 in the future.
+  const entryHash = computeEntryHashV2({
     id,
+    actorType: input.actorType,
     actorId: input.actorId,
+    accountUuid: input.accountUuid,
     action: input.action,
+    resourceType: input.resourceType,
     resourceId: input.resourceId,
+    appId: input.appId,
+    requestId: input.requestId,
+    traceparent: input.traceparent,
+    outcome: input.outcome,
+    initiatedBy: input.initiatedBy,
+    agentId: input.agentId,
+    delegatedAuthorityJti: input.delegatedAuthorityJti,
+    targetRail: input.targetRail,
+    targetOperation: input.targetOperation,
+    businessOpId: input.businessOpId,
     detail: input.detail,
     previousHash,
   });
@@ -154,7 +277,7 @@ export async function appendAuditEntry(
       agent_id, delegated_authority_jti, target_rail, target_operation,
       business_op_id,
       request_id, traceparent, outcome, detail,
-      previous_hash, entry_hash, initiated_by
+      previous_hash, entry_hash, hash_version, initiated_by
     ) VALUES (
       ${id},
       ${input.appId ?? null},
@@ -175,6 +298,7 @@ export async function appendAuditEntry(
       ${detailJson}::jsonb,
       ${previousHash},
       ${entryHash},
+      ${CURRENT_AUDIT_HASH_VERSION},
       ${input.initiatedBy ?? null}
     )
   `);
