@@ -26,6 +26,7 @@
     "db:migrate": "tsx --env-file=.env scripts/migrate.ts",
     "db:seed:app": "tsx --env-file=.env scripts/seedAppCredential.ts",
     "db:seed:helpan-kws": "tsx --env-file=.env scripts/seedHelpanKwsAdmission.ts",
+    "db:seed:helpan-klokd": "tsx --env-file=.env scripts/seedHelpanKlokdAdmission.ts",
     "db:check": "drizzle-kit check",
     "db:studio": "drizzle-kit studio"
   },

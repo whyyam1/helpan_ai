@@ -112,4 +112,71 @@ describe('matchEventAgainstBriefings', () => {
   it('returns empty when given empty briefings list', () => {
     expect(matchEventAgainstBriefings(makeEvent({ a: 1 }), [])).toHaveLength(0);
   });
+
+  // H-9 — strategy routing
+  it('routes klokd.shift_search briefings to the Klokd matcher (not generic)', () => {
+    const event: MatchableEvent = {
+      id: 'evt_klokd',
+      eventType: 'klokd.shift_offer',
+      appId: 'klokd',
+      accountUuid: 'acc_00000000-0000-0000-0000-000000000001',
+      payload: {
+        shift_id: 'shf_1',
+        category: 'hospitality',
+        pay_minor: 100000,
+      },
+    };
+    const klokdBriefing: MatchableBriefing = {
+      id: 'brf_klokd',
+      accountUuid: 'acc_00000000-0000-0000-0000-000000000001',
+      appId: 'klokd',
+      briefingType: 'alert',
+      intent: {
+        domain: 'klokd.shift_search',
+        categories: ['hospitality'],
+        min_pay_minor: 80000,
+        // No `match` key on purpose — the generic matcher would not fire.
+      },
+    };
+    const results = matchEventAgainstBriefings(event, [klokdBriefing]);
+    expect(results).toHaveLength(1);
+    expect(results[0]!.detail['match_kind']).toBe('klokd_shift_search');
+  });
+
+  it('a klokd briefing whose conditions are not met returns no match', () => {
+    const event: MatchableEvent = {
+      id: 'evt_klokd',
+      eventType: 'klokd.shift_offer',
+      appId: 'klokd',
+      accountUuid: 'acc_00000000-0000-0000-0000-000000000001',
+      payload: { category: 'construction', pay_minor: 10000 },
+    };
+    const klokdBriefing: MatchableBriefing = {
+      id: 'brf_klokd',
+      accountUuid: 'acc_00000000-0000-0000-0000-000000000001',
+      appId: 'klokd',
+      briefingType: 'alert',
+      intent: {
+        domain: 'klokd.shift_search',
+        categories: ['hospitality'],
+        min_pay_minor: 80000,
+      },
+    };
+    expect(matchEventAgainstBriefings(event, [klokdBriefing])).toHaveLength(0);
+  });
+
+  it('an unknown domain falls back to the generic matcher', () => {
+    const event = makeEvent({ merchant_id: 'mer_abc' });
+    const briefingUnknownDomain: MatchableBriefing = {
+      id: 'brf_unknown',
+      accountUuid: 'acc_00000000-0000-0000-0000-000000000001',
+      appId: 'lunchdrop',
+      briefingType: 'alert',
+      // Domain set to something the router doesn't know → generic fallback.
+      intent: { domain: 'unregistered.domain', match: { merchant_id: 'mer_abc' } },
+    };
+    const results = matchEventAgainstBriefings(event, [briefingUnknownDomain]);
+    expect(results).toHaveLength(1);
+    expect(results[0]!.detail['match_kind']).toBe('generic_key_equality');
+  });
 });

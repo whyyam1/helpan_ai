@@ -1,15 +1,11 @@
 /**
- * Matching engine — generic key-equality matcher.
+ * Matching engine.
  *
- * H-5 ships the minimum viable matcher per plan decision 2b: a briefing's
- * `intent.match` object must be a subset of the event's `payload` (i.e.
- * every key/value pair in `intent.match` exists with the same value in
- * `payload`). Type-specific matchers (`alert` / `standing_basket` /
- * `scheduled_action` / `threshold_watch`) land in per-app sprints H-9..H-12
- * as each app's intent shape gets exercised.
- *
- * Confidence: exact-equality matches are always `high`. Fuzzy / scored
- * matching is out of scope at H-5 — there is no fuzzy code path yet.
+ * H-5 shipped the generic key-equality matcher (subset of intent.match in
+ * payload). H-9 makes this a **strategy router** — briefings with
+ * `intent.domain` set go to a type-aware matcher (`klokd.shift_search` →
+ * `klokdShiftMatcher`); anything else falls back to the H-5 generic matcher.
+ * Per-app sprints H-10..H-12 add their own matchers under the same router.
  *
  * Pre-filtering (eligibility before this function is called):
  *   - briefing.status = 'active'
@@ -20,6 +16,10 @@
  * Those filters live in the repo so the SQL planner can use the
  * `(account_uuid, status)` and `(app_id, status)` indexes; this engine
  * trusts its inputs and only evaluates the intent payload.
+ *
+ * Confidence: every v1.0 matcher (generic + Klokd) returns `high` on match —
+ * either the predicate is satisfied or it isn't. Fuzzy / scored matching
+ * is a v1.1+ item.
  */
 
 export interface MatchableBriefing {
@@ -96,37 +96,80 @@ function payloadCoversMatchPredicate(
 }
 
 /**
- * Run all pre-filtered briefings against one event.
+ * Strategy router. Reads `briefing.intent.domain` and dispatches to the
+ * matching per-app matcher. Imported lazily-via-static-import below; if
+ * `domain` is unset or unknown, falls back to the H-5 generic key-equality
+ * matcher.
  *
- * A briefing whose `intent.match` is missing or not an object is treated
- * as **non-matching** in H-5 — pre-H-9 briefings without a match predicate
- * never fire. Per-app sprints will introduce type-specific matchers that
- * read other intent fields (e.g. `intent.threshold`, `intent.window`).
+ * Per-app sprints register their matcher here; the table stays small so a
+ * lookup is constant-time and the dependency graph is explicit (no
+ * dynamic-require). Adding a new matcher is one line.
+ */
+function genericMatch(
+  briefing: MatchableBriefing,
+  event: MatchableEvent
+): BriefingMatch | null {
+  const rawPredicate = briefing.intent['match'];
+  if (typeof rawPredicate !== 'object' || rawPredicate === null || Array.isArray(rawPredicate)) {
+    return null;
+  }
+  const predicate = rawPredicate as Record<string, unknown>;
+  if (!payloadCoversMatchPredicate(event.payload, predicate)) return null;
+  return {
+    briefingId: briefing.id,
+    accountUuid: briefing.accountUuid,
+    confidence: 'high',
+    detail: {
+      match_kind: 'generic_key_equality',
+      predicate_keys: Object.keys(predicate),
+      briefing_type: briefing.briefingType,
+      event_type: event.eventType,
+    },
+  };
+}
+
+/**
+ * Run all pre-filtered briefings against one event. Dispatches per-briefing
+ * to the matcher selected by `intent.domain`.
+ *
+ * A briefing whose intent neither names a registered domain nor carries a
+ * generic `match` predicate is treated as **non-matching** — pre-H-9
+ * briefings without a match predicate never fired and the same is true
+ * here.
  */
 export function matchEventAgainstBriefings(
   event: MatchableEvent,
   briefings: readonly MatchableBriefing[]
 ): readonly BriefingMatch[] {
+  // Import lazily inside the function body to avoid an at-load cycle if a
+  // future per-app matcher imports from this module. The Klokd matcher
+  // currently does — it consumes the public types defined above.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- pure static import below
   const matches: BriefingMatch[] = [];
   for (const briefing of briefings) {
-    const rawPredicate = briefing.intent['match'];
-    if (typeof rawPredicate !== 'object' || rawPredicate === null || Array.isArray(rawPredicate)) {
-      continue;
-    }
-    const predicate = rawPredicate as Record<string, unknown>;
-    if (!payloadCoversMatchPredicate(event.payload, predicate)) continue;
-
-    matches.push({
-      briefingId: briefing.id,
-      accountUuid: briefing.accountUuid,
-      confidence: 'high',
-      detail: {
-        match_kind: 'generic_key_equality',
-        predicate_keys: Object.keys(predicate),
-        briefing_type: briefing.briefingType,
-        event_type: event.eventType,
-      },
-    });
+    const domain = briefing.intent['domain'];
+    const matcher = typeof domain === 'string' ? DOMAIN_MATCHERS[domain] : undefined;
+    const match = matcher ? matcher(briefing, event) : genericMatch(briefing, event);
+    if (match) matches.push(match);
   }
   return matches;
 }
+
+// Registered per-app matchers. Add new domains here as each per-app sprint
+// (H-10 Lunch Drop, H-11 Chapaa, H-12 family-discovery) lands.
+import { isKlokdShiftBriefing, matchKlokdShiftBriefing } from './klokdShiftMatcher.js';
+
+type DomainMatcher = (
+  b: MatchableBriefing,
+  e: MatchableEvent
+) => BriefingMatch | null;
+
+const DOMAIN_MATCHERS: Readonly<Record<string, DomainMatcher>> = {
+  'klokd.shift_search': (b, e) => {
+    // Defensive: route guard repeats the discriminator check so a malformed
+    // briefing (domain set but other intent fields missing) returns null
+    // rather than throwing.
+    if (!isKlokdShiftBriefing(b)) return null;
+    return matchKlokdShiftBriefing(b, e);
+  },
+};
