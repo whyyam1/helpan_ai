@@ -155,8 +155,8 @@ export function matchEventAgainstBriefings(
   return matches;
 }
 
-// Registered per-app matchers. Add new domains here as each per-app sprint
-// (H-12 family-discovery) lands.
+// Registered per-app matchers. The full set lives here after H-9..H-12:
+//   klokd · lunchdrop · chapaa (round-up + goals) · family_discovery (fresh + basket)
 import { isKlokdShiftBriefing, matchKlokdShiftBriefing } from './klokdShiftMatcher.js';
 import {
   isLunchDropPlanBriefing,
@@ -168,6 +168,12 @@ import {
   matchGoalAccelerationBriefing,
   matchRoundUpBriefing,
 } from './chapaaMatchers.js';
+import {
+  isBasketRefillBriefing,
+  isFreshArrivalsBriefing,
+  matchBasketRefillBriefing,
+  matchFreshArrivalsBriefing,
+} from './familyDiscoveryMatchers.js';
 
 type DomainMatcher = (
   b: MatchableBriefing,
@@ -193,5 +199,13 @@ const DOMAIN_MATCHERS: Readonly<Record<string, DomainMatcher>> = {
   'chapaa.goal_acceleration': (b, e) => {
     if (!isGoalAccelerationBriefing(b)) return null;
     return matchGoalAccelerationBriefing(b, e);
+  },
+  'family_discovery.fresh_arrivals': (b, e) => {
+    if (!isFreshArrivalsBriefing(b)) return null;
+    return matchFreshArrivalsBriefing(b, e);
+  },
+  'family_discovery.basket_auto_refill': (b, e) => {
+    if (!isBasketRefillBriefing(b)) return null;
+    return matchBasketRefillBriefing(b, e);
   },
 };

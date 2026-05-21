@@ -92,6 +92,13 @@
       "when": 1747872120000,
       "tag": "0013_chapaa_scopes",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1747872180000,
+      "tag": "0014_family_discovery_scopes",
+      "breakpoints": true
     }
   ]
 }

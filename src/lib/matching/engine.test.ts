@@ -165,6 +165,59 @@ describe('matchEventAgainstBriefings', () => {
     expect(matchEventAgainstBriefings(event, [klokdBriefing])).toHaveLength(0);
   });
 
+  it('routes family_discovery.fresh_arrivals to the family-discovery matcher', () => {
+    const event: MatchableEvent = {
+      id: 'evt_fresh',
+      eventType: 'family_discovery.listing_arrived',
+      appId: 'family_discovery',
+      accountUuid: 'acc_00000000-0000-0000-0000-000000000001',
+      payload: { category: 'fresh_fish', price_minor: 50000 },
+    };
+    const fresh: MatchableBriefing = {
+      id: 'brf_fresh',
+      accountUuid: 'acc_00000000-0000-0000-0000-000000000001',
+      appId: 'family_discovery',
+      briefingType: 'alert',
+      intent: {
+        domain: 'family_discovery.fresh_arrivals',
+        categories: ['fresh_fish'],
+        max_price_minor: 100000,
+      },
+    };
+    const results = matchEventAgainstBriefings(event, [fresh]);
+    expect(results).toHaveLength(1);
+    expect(results[0]!.detail['match_kind']).toBe('family_discovery_fresh_arrivals');
+  });
+
+  it('routes family_discovery.basket_auto_refill to the basket matcher', () => {
+    const event: MatchableEvent = {
+      id: 'evt_basket',
+      eventType: 'family_discovery.basket_tick',
+      appId: 'family_discovery',
+      accountUuid: 'acc_00000000-0000-0000-0000-000000000001',
+      payload: {
+        merchant_id: 'mer_x',
+        line_items: [{ sku: 'tomatoes_2kg', price_minor: 25000 }],
+        total_minor: 25000,
+      },
+    };
+    const basket: MatchableBriefing = {
+      id: 'brf_basket',
+      accountUuid: 'acc_00000000-0000-0000-0000-000000000001',
+      appId: 'family_discovery',
+      briefingType: 'standing_basket',
+      intent: {
+        domain: 'family_discovery.basket_auto_refill',
+        merchant_ids: ['mer_x'],
+        items: [{ sku: 'tomatoes_2kg', max_price_minor: 30000 }],
+        max_total_minor: 100000,
+      },
+    };
+    const results = matchEventAgainstBriefings(event, [basket]);
+    expect(results).toHaveLength(1);
+    expect(results[0]!.detail['match_kind']).toBe('family_discovery_basket_auto_refill');
+  });
+
   it('routes chapaa.round_up_offer briefings to the Chapaa round-up matcher', () => {
     const event: MatchableEvent = {
       id: 'evt_debit',
