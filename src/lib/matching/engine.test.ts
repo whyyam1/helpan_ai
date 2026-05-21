@@ -165,6 +165,35 @@ describe('matchEventAgainstBriefings', () => {
     expect(matchEventAgainstBriefings(event, [klokdBriefing])).toHaveLength(0);
   });
 
+  it('routes lunchdrop.weekly_plan briefings to the Lunch Drop matcher', () => {
+    const event: MatchableEvent = {
+      id: 'evt_lunch',
+      eventType: 'lunchdrop.offer',
+      appId: 'lunchdrop',
+      accountUuid: 'acc_00000000-0000-0000-0000-000000000001',
+      payload: {
+        merchant_id: 'mer_powermama',
+        items: [{ name: 'chapati' }],
+        total_minor: 40000,
+      },
+    };
+    const planBriefing: MatchableBriefing = {
+      id: 'brf_plan',
+      accountUuid: 'acc_00000000-0000-0000-0000-000000000001',
+      appId: 'lunchdrop',
+      briefingType: 'scheduled_action',
+      intent: {
+        domain: 'lunchdrop.weekly_plan',
+        merchant_id: 'mer_powermama',
+        menu_preference: ['chapati'],
+        max_per_order_minor: 80000,
+      },
+    };
+    const results = matchEventAgainstBriefings(event, [planBriefing]);
+    expect(results).toHaveLength(1);
+    expect(results[0]!.detail['match_kind']).toBe('lunchdrop_weekly_plan');
+  });
+
   it('an unknown domain falls back to the generic matcher', () => {
     const event = makeEvent({ merchant_id: 'mer_abc' });
     const briefingUnknownDomain: MatchableBriefing = {

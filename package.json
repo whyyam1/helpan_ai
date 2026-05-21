@@ -27,6 +27,7 @@
     "db:seed:app": "tsx --env-file=.env scripts/seedAppCredential.ts",
     "db:seed:helpan-kws": "tsx --env-file=.env scripts/seedHelpanKwsAdmission.ts",
     "db:seed:helpan-klokd": "tsx --env-file=.env scripts/seedHelpanKlokdAdmission.ts",
+    "db:seed:helpan-lunchdrop": "tsx --env-file=.env scripts/seedHelpanLunchDropAdmission.ts",
     "db:check": "drizzle-kit check",
     "db:studio": "drizzle-kit studio"
   },
