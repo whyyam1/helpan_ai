@@ -64,6 +64,13 @@
       "when": 1747526400000,
       "tag": "0009_business_op_id",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1747785600000,
+      "tag": "0010_newdocs_scopes",
+      "breakpoints": true
     }
   ]
 }
