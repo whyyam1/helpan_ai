@@ -16,6 +16,8 @@
     "worker:webhooks:start": "node dist/workers/webhookDelivery/index.js",
     "worker:cascade": "tsx --env-file=.env src/workers/cascadeRevocation/index.ts",
     "worker:cascade:start": "node dist/workers/cascadeRevocation/index.js",
+    "worker:reaper": "tsx --env-file=.env src/workers/actionReaper/index.ts",
+    "worker:reaper:start": "node dist/workers/actionReaper/index.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint \"src/**/*.ts\" \"test/**/*.ts\"",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",

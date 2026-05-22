@@ -12,7 +12,7 @@
  * unique index is the DB backstop.
  */
 
-import { and, desc, eq, lt, or, type SQL } from 'drizzle-orm';
+import { and, desc, eq, lt, or, sql, type SQL } from 'drizzle-orm';
 import { actions } from '../../db/schema/actions.js';
 import type { Db } from '../../db/client.js';
 import type { Tx } from '../../plugins/rlsContext.js';
@@ -140,6 +140,95 @@ export interface ListActionsInput {
   cursorCreatedAt?: Date;
   cursorId?: string;
   limit: number;
+}
+
+/**
+ * Reaper read path (H-16). Returns up to `limit` actions still in
+ * `pending` whose `created_at` is older than the staleness threshold,
+ * row-locked via `FOR UPDATE SKIP LOCKED` so concurrent reaper replicas
+ * do not double-settle.
+ *
+ * MUST be called inside a transaction — the row locks are tx-scoped.
+ * The caller settles each row via `markActionFailed` (writing the
+ * `action.fail` audit entry inside the SAME transaction so the row
+ * status and the audit chain commit together) and then commits.
+ *
+ * Index used: `actions_pending_idx` (partial, on
+ *   (status, created_at) WHERE status = 'pending'
+ * ) from migration 0005 — keeps the scan fast even when the table grows.
+ */
+export async function listStalePendingActions(
+  tx: Tx,
+  input: { readonly olderThanCreatedAt: Date; readonly limit: number }
+): Promise<readonly ActionRow[]> {
+  const rows = (await tx.execute(sql`
+    SELECT
+      id, account_uuid, agent_id, delegated_authority_jti,
+      target_rail, target_operation, status, initiated_by, actor_type,
+      request_payload_redacted, result_redacted, error_code, traceparent,
+      app_id, app_correlation_id, business_op_id, idempotency_key,
+      created_at, completed_at
+    FROM actions
+    WHERE status = 'pending'
+      AND created_at < ${input.olderThanCreatedAt.toISOString()}::timestamptz
+    ORDER BY created_at ASC, id ASC
+    LIMIT ${input.limit}
+    FOR UPDATE SKIP LOCKED
+  `)) as unknown as readonly {
+    id: string;
+    account_uuid: string;
+    agent_id: string;
+    delegated_authority_jti: string | null;
+    target_rail: string;
+    target_operation: string;
+    status: string;
+    initiated_by: string;
+    actor_type: string | null;
+    request_payload_redacted: Record<string, unknown>;
+    result_redacted: Record<string, unknown> | null;
+    error_code: string | null;
+    traceparent: string | null;
+    app_id: string;
+    app_correlation_id: string | null;
+    business_op_id: string | null;
+    idempotency_key: string;
+    // Raw `tx.execute(sql`…`)` returns postgres-js native types — timestamps
+    // come back as ISO strings, not Date objects, unlike Drizzle's typed
+    // .select(). Normalise in the map() below.
+    created_at: string | Date;
+    completed_at: string | Date | null;
+  }[];
+
+  // Map snake_case driver shape → camelCase ActionRow shape consumed by
+  // the rest of the module. This is the only call site where we hand-roll
+  // SQL (so we can append FOR UPDATE SKIP LOCKED), so the mapping is
+  // local rather than a shared helper.
+  return rows.map((r) => ({
+    id: r.id,
+    accountUuid: r.account_uuid,
+    agentId: r.agent_id,
+    delegatedAuthorityJti: r.delegated_authority_jti,
+    targetRail: r.target_rail,
+    targetOperation: r.target_operation,
+    status: r.status,
+    initiatedBy: r.initiated_by,
+    actorType: r.actor_type,
+    requestPayloadRedacted: r.request_payload_redacted,
+    resultRedacted: r.result_redacted,
+    errorCode: r.error_code,
+    traceparent: r.traceparent,
+    appId: r.app_id,
+    appCorrelationId: r.app_correlation_id,
+    businessOpId: r.business_op_id,
+    idempotencyKey: r.idempotency_key,
+    createdAt: r.created_at instanceof Date ? r.created_at : new Date(r.created_at),
+    completedAt:
+      r.completed_at === null
+        ? null
+        : r.completed_at instanceof Date
+          ? r.completed_at
+          : new Date(r.completed_at),
+  }));
 }
 
 export async function listActions(
