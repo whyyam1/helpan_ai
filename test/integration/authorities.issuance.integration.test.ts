@@ -16,6 +16,7 @@ import { createInProcessSigner } from '../helpers/testAuthorities.js';
 import {
   buildIntegrationApp,
   countAuditEntries,
+  drainTestOutbox,
   getTestDatabaseUrl,
   resetTestData,
   withRealDb,
@@ -110,7 +111,8 @@ describe.skipIf(!hasUrl)('POST /v1/authorities (real Postgres)', () => {
     expect(typeof data.token).toBe('string');
     expect(data.agent_id).toBe(agentId);
 
-    // AUTHORITY_ISSUED published.
+    // AUTHORITY_ISSUED published (H-17: drained from outbox).
+    await drainTestOutbox(handle, kafka);
     expect(kafka.published).toHaveLength(1);
     expect(kafka.published[0]?.topic).toBe('helpan.authority.events');
     expect(kafka.published[0]?.value).toMatchObject({

@@ -22,6 +22,7 @@ import {
 import {
   buildIntegrationApp,
   countAuditEntries,
+  drainTestOutbox,
   getTestDatabaseUrl,
   resetTestData,
   withRealDb,
@@ -127,6 +128,7 @@ describe.skipIf(!hasUrl)('POST /v1/events/ingest (real Postgres)', () => {
     const json = res.json();
     expect(json.data.event_id).toMatch(/^evt_[0-9A-HJKMNP-TV-Z]{26}$/);
     expect(json.data.match_count).toBe(0);
+    await drainTestOutbox(handle, kafka);
     expect(kafka.published).toHaveLength(0);
 
     // No matches → no webhook row enqueued.
@@ -191,7 +193,8 @@ describe.skipIf(!hasUrl)('POST /v1/events/ingest (real Postgres)', () => {
     expect(webhooks[0]?.status).toBe('pending');
     expect(webhooks[0]?.attempt_count).toBe(0);
 
-    // Kafka publish captured
+    // Kafka publish captured (H-17: drained from outbox)
+    await drainTestOutbox(handle, kafka);
     expect(kafka.published).toHaveLength(1);
     expect(kafka.published[0]?.topic).toBe('helpan.briefing.events');
     expect(kafka.published[0]?.key).toBe(ACCOUNT_A);
@@ -242,7 +245,8 @@ describe.skipIf(!hasUrl)('POST /v1/events/ingest (real Postgres)', () => {
       n: number;
     }[];
     expect(webhookCount[0]?.n).toBe(0);
-    // Kafka publish still fires.
+    // Kafka publish still fires (H-17: drained from outbox).
+    await drainTestOutbox(handle, kafka);
     expect(kafka.published).toHaveLength(1);
   });
 

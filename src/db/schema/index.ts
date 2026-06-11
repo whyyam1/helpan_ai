@@ -29,3 +29,6 @@ export * from './briefingMatches.js';
 export * from './delegatedAuthorities.js';
 export * from './authorityUsage.js';
 export * from './actions.js';
+
+// 0016 — kafka outbox (H-17, closes RECAP §6.7)
+export * from './kafkaOutbox.js';

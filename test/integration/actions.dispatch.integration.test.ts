@@ -21,6 +21,7 @@ import {
 import { createInProcessSigner } from '../helpers/testAuthorities.js';
 import {
   buildIntegrationApp,
+  drainTestOutbox,
   getTestDatabaseUrl,
   resetTestData,
   withRealDb,
@@ -211,7 +212,8 @@ describe.skipIf(!hasUrl)('POST /v1/actions/dispatch (real Postgres)', () => {
     expect(usage[0]!.call_count).toBe(1);
     expect(usage[0]!.cumulative).toBe('0'); // no amount supplied
 
-    // ACTION_DISPATCHED + ACTION_COMPLETED published
+    // ACTION_DISPATCHED + ACTION_COMPLETED published (H-17: drained from outbox)
+    await drainTestOutbox(handle, kafka);
     const types = kafka.published.map((m) => m.value['event_type']);
     expect(types).toContain('ACTION_DISPATCHED');
     expect(types).toContain('ACTION_COMPLETED');

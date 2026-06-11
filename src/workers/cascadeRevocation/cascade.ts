@@ -29,6 +29,7 @@ import {
   SCHEMA_VERSION,
   TOPIC_AUTHORITY_EVENTS,
 } from '../../lib/kafka/topics.js';
+import { enqueueOutboxEntry } from '../../lib/kafka/outbox.js';
 import type { KafkaProducerLike } from '../../lib/kafka/producer.js';
 import type { Db } from '../../db/client.js';
 import {
@@ -171,31 +172,28 @@ export async function handleAccountEvent(
         },
       });
       done.push({ id: updated.id, accountUuid, agentId: updated.agentId });
-    }
-    return done;
-  });
-
-  // Publish AUTHORITY_REVOKED for each — relying parties evict their caches.
-  if (deps.kafka) {
-    for (const r of revoked) {
-      await deps.kafka.publish({
+      // H-17: enqueue AUTHORITY_REVOKED inside the same tx as the revoke
+      // + audit so cascade-revoked events are durably emitted. Relying
+      // parties evict their validate caches when they consume this.
+      await enqueueOutboxEntry(tx, {
         topic: TOPIC_AUTHORITY_EVENTS,
-        key: r.accountUuid,
-        value: {
-          event_id: r.id,
+        partitionKey: updated.accountUuid,
+        payload: {
+          event_id: updated.id,
           event_type: EVENT_AUTHORITY_REVOKED,
           schema_version: SCHEMA_VERSION,
           occurred_at: now.toISOString(),
-          authority_id: r.id,
-          account_uuid: r.accountUuid,
-          agent_id: r.agentId,
+          authority_id: updated.id,
+          account_uuid: updated.accountUuid,
+          agent_id: updated.agentId,
           reason,
           revoked_at: now.toISOString(),
           ...(event.traceparent ? { traceparent: event.traceparent } : {}),
         },
       });
     }
-  }
+    return done;
+  });
 
   return { trigger, accountUuid, revoked: revoked.length };
 }

@@ -18,6 +18,7 @@ import { createInProcessSigner } from '../helpers/testAuthorities.js';
 import {
   buildIntegrationApp,
   countAuditEntries,
+  drainTestOutbox,
   getTestDatabaseUrl,
   resetTestData,
   withRealDb,
@@ -223,6 +224,8 @@ describe.skipIf(!hasUrl)('handleAccountEvent (real Postgres)', () => {
     const agentId = await registerAgent();
     await issueReadOnly(agentId, ACCOUNT_A);
     await issueReadOnly(agentId, ACCOUNT_A);
+    // H-17: drain the two AUTHORITY_ISSUED outbox entries first.
+    await drainTestOutbox(handle, kafka);
     kafka.clear(); // drop the two AUTHORITY_ISSUED publishes
 
     const auditBefore = await countAuditEntries(handle);
@@ -232,6 +235,7 @@ describe.skipIf(!hasUrl)('handleAccountEvent (real Postgres)', () => {
       'req_test_publish'
     );
     expect(result.revoked).toBe(2);
+    await drainTestOutbox(handle, kafka);
     expect(kafka.published).toHaveLength(2);
     for (const m of kafka.published) {
       expect(m.topic).toBe('helpan.authority.events');

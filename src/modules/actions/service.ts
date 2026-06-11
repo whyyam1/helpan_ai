@@ -47,6 +47,7 @@ import {
   SCHEMA_VERSION,
   TOPIC_ACTION_EVENTS,
 } from '../../lib/kafka/topics.js';
+import { enqueueOutboxEntry } from '../../lib/kafka/outbox.js';
 import type { KafkaProducerLike } from '../../lib/kafka/producer.js';
 import type { Db } from '../../db/client.js';
 import type {
@@ -108,6 +109,15 @@ export interface DispatchActionDeps {
   readonly db: Db;
   readonly validationDeps: ValidationDeps;
   readonly dispatchers: DispatcherRegistry;
+  /**
+   * Vestigial after H-17. The actions module no longer publishes directly —
+   * events are enqueued to the `kafka_outbox` table inside the same tx as
+   * the business write. The drainer worker (`src/workers/kafkaOutbox/`)
+   * owns the kafkajs connection. Accepted in the deps shape only so the
+   * existing routes wiring in `app.ts` (which passes `fastify.kafka`)
+   * stays compile-clean; the field is ignored. Will be removed once
+   * `app.ts` is rewired post-H-17.
+   */
   readonly kafka?: KafkaProducerLike;
 }
 
@@ -251,19 +261,26 @@ export async function dispatchAction(
       periodWindow,
       amountMinor: BigInt(args.amountMinor ?? 0),
     });
-  });
-
-  // ---- 8. Publish ACTION_DISPATCHED (best-effort) -------------------------
-  await publishActionEvent(deps.kafka, EVENT_ACTION_DISPATCHED, {
-    action_id: actionId,
-    account_uuid: args.accountUuid,
-    agent_id: authority.agent_id,
-    delegated_authority_jti: jti,
-    target_rail: args.targetRail,
-    target_operation: args.targetOperation,
-    business_op_id: businessOpId,
-    traceparent,
-    occurred_at: now.toISOString(),
+    // ---- 7e. Enqueue ACTION_DISPATCHED to outbox -------------------------
+    // Inside the same tx as the action row + audit entry + usage increment
+    // so emission is atomic with the business write (H-17).
+    await enqueueOutboxEntry(tx, {
+      topic: TOPIC_ACTION_EVENTS,
+      partitionKey: args.accountUuid,
+      payload: {
+        schema_version: SCHEMA_VERSION,
+        event_type: EVENT_ACTION_DISPATCHED,
+        action_id: actionId,
+        account_uuid: args.accountUuid,
+        agent_id: authority.agent_id,
+        delegated_authority_jti: jti,
+        target_rail: args.targetRail,
+        target_operation: args.targetOperation,
+        business_op_id: businessOpId,
+        traceparent,
+        occurred_at: now.toISOString(),
+      },
+    });
   });
 
   // ---- 9. Phase B — outbound dispatch ------------------------------------
@@ -306,6 +323,24 @@ export async function dispatchAction(
           latency_ms: outcome.latencyMs,
         },
       });
+      // ---- 10c. Enqueue ACTION_COMPLETED to outbox (inside Phase C tx) -
+      await enqueueOutboxEntry(tx, {
+        topic: TOPIC_ACTION_EVENTS,
+        partitionKey: args.accountUuid,
+        payload: {
+          schema_version: SCHEMA_VERSION,
+          event_type: EVENT_ACTION_COMPLETED,
+          action_id: actionId,
+          account_uuid: args.accountUuid,
+          agent_id: authority.agent_id,
+          delegated_authority_jti: jti,
+          target_rail: args.targetRail,
+          target_operation: args.targetOperation,
+          business_op_id: businessOpId,
+          traceparent,
+          occurred_at: completedAt.toISOString(),
+        },
+      });
       return updated;
     }
     const updated = await markActionFailed(
@@ -337,6 +372,25 @@ export async function dispatchAction(
         ...(outcome.detail ? { rail_detail: outcome.detail } : {}),
       },
     });
+    // ---- 10c. Enqueue ACTION_FAILED to outbox (inside Phase C tx) -----
+    await enqueueOutboxEntry(tx, {
+      topic: TOPIC_ACTION_EVENTS,
+      partitionKey: args.accountUuid,
+      payload: {
+        schema_version: SCHEMA_VERSION,
+        event_type: EVENT_ACTION_FAILED,
+        action_id: actionId,
+        account_uuid: args.accountUuid,
+        agent_id: authority.agent_id,
+        delegated_authority_jti: jti,
+        target_rail: args.targetRail,
+        target_operation: args.targetOperation,
+        business_op_id: businessOpId,
+        traceparent,
+        error_code: outcome.errorCode,
+        occurred_at: completedAt.toISOString(),
+      },
+    });
     return updated;
   });
 
@@ -347,24 +401,6 @@ export async function dispatchAction(
       `Action ${actionId} was inserted but did not survive the terminal update`
     );
   }
-
-  // ---- 11. Publish completion event --------------------------------------
-  await publishActionEvent(
-    deps.kafka,
-    outcome.status === 'completed' ? EVENT_ACTION_COMPLETED : EVENT_ACTION_FAILED,
-    {
-      action_id: actionId,
-      account_uuid: args.accountUuid,
-      agent_id: authority.agent_id,
-      delegated_authority_jti: jti,
-      target_rail: args.targetRail,
-      target_operation: args.targetOperation,
-      business_op_id: businessOpId,
-      traceparent,
-      ...(outcome.status === 'failed' ? { error_code: outcome.errorCode } : {}),
-      occurred_at: completedAt.toISOString(),
-    }
-  );
 
   // ---- 12. DTO -----------------------------------------------------------
   return toActionDto(finalRow);
@@ -527,28 +563,7 @@ function cryptoGetRandomValues(arr: Uint8Array): void {
   (globalThis as { crypto: { getRandomValues(arr: Uint8Array): Uint8Array } }).crypto.getRandomValues(arr);
 }
 
-/**
- * Best-effort Kafka publish. No producer → skip silently. Failures are
- * logged elsewhere (the producer's `publish` resolves with an error result
- * the caller may inspect); we don't fail the request on a Kafka miss.
- */
-async function publishActionEvent(
-  kafka: KafkaProducerLike | undefined,
-  eventType: string,
-  payload: Record<string, unknown>
-): Promise<void> {
-  if (!kafka) return;
-  try {
-    await kafka.publish({
-      topic: TOPIC_ACTION_EVENTS,
-      key: String(payload['account_uuid'] ?? ''),
-      value: {
-        schema_version: SCHEMA_VERSION,
-        event_type: eventType,
-        ...payload,
-      },
-    });
-  } catch {
-    // Intentionally swallowed — the action row + audit chain are authoritative.
-  }
-}
+// H-17: `publishActionEvent` was removed. Action events now enqueue to the
+// `kafka_outbox` table inside the same tx as the business write; the
+// drainer worker (src/workers/kafkaOutbox/) owns the kafkajs connection.
+// See enqueueOutboxEntry usages above in dispatchAction.

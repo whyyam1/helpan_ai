@@ -26,6 +26,7 @@ import {
   SCHEMA_VERSION,
   TOPIC_AUTHORITY_EVENTS,
 } from '../../lib/kafka/topics.js';
+import { enqueueOutboxEntry } from '../../lib/kafka/outbox.js';
 import type { KafkaProducerLike } from '../../lib/kafka/producer.js';
 import type { Db } from '../../db/client.js';
 import type { DelegatedAuthoritySigner } from '../../lib/identitiSigner.js';
@@ -292,27 +293,25 @@ export async function issueAuthority(
         step_up_jti: stepUpJti ?? null,
       },
     });
-    return inserted;
-  });
-
-  // 10. Publish AUTHORITY_ISSUED after commit.
-  if (deps.kafka) {
-    await deps.kafka.publish({
+    // 9b. Enqueue AUTHORITY_ISSUED to the outbox (H-17 — inside the same tx
+    // as the authority row + audit entry).
+    await enqueueOutboxEntry(tx, {
       topic: TOPIC_AUTHORITY_EVENTS,
-      key: row.accountUuid,
-      value: {
-        event_id: row.id,
+      partitionKey: inserted.accountUuid,
+      payload: {
+        event_id: inserted.id,
         event_type: EVENT_AUTHORITY_ISSUED,
         schema_version: SCHEMA_VERSION,
         occurred_at: new Date().toISOString(),
-        authority_id: row.id,
-        account_uuid: row.accountUuid,
-        agent_id: row.agentId,
-        expires_at: row.expiresAt.toISOString(),
+        authority_id: inserted.id,
+        account_uuid: inserted.accountUuid,
+        agent_id: inserted.agentId,
+        expires_at: inserted.expiresAt.toISOString(),
         ...(audit.traceparent ? { traceparent: audit.traceparent } : {}),
       },
     });
-  }
+    return inserted;
+  });
 
   return { dto: toDto(row, signed.token) };
 }
@@ -547,27 +546,26 @@ export async function revokeAuthority(
         ...(args.detail !== undefined ? { detail: args.detail } : {}),
       },
     });
-    return revoked;
-  });
-
-  if (deps.kafka) {
-    await deps.kafka.publish({
+    // H-17: AUTHORITY_REVOKED enqueued inside the same tx as the row flip
+    // + audit entry. Atomic with the business write.
+    await enqueueOutboxEntry(tx, {
       topic: TOPIC_AUTHORITY_EVENTS,
-      key: row.accountUuid,
-      value: {
-        event_id: row.id,
+      partitionKey: revoked.accountUuid,
+      payload: {
+        event_id: revoked.id,
         event_type: EVENT_AUTHORITY_REVOKED,
         schema_version: SCHEMA_VERSION,
         occurred_at: now.toISOString(),
-        authority_id: row.id,
-        account_uuid: row.accountUuid,
-        agent_id: row.agentId,
+        authority_id: revoked.id,
+        account_uuid: revoked.accountUuid,
+        agent_id: revoked.agentId,
         reason: args.reason,
         revoked_at: now.toISOString(),
         ...(audit.traceparent ? { traceparent: audit.traceparent } : {}),
       },
     });
-  }
+    return revoked;
+  });
 
   return toDto(row);
 }

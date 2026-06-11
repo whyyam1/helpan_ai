@@ -117,12 +117,37 @@ export async function resetTestData(sql: Sql): Promise<void> {
   await sql`TRUNCATE TABLE safety_policies CASCADE`;
   await sql`TRUNCATE TABLE authority_usage CASCADE`;
   await sql`TRUNCATE TABLE delegated_authorities CASCADE`;
+  // H-17 — Kafka outbox. No FK; truncated freely between tests.
+  await sql`TRUNCATE TABLE kafka_outbox CASCADE`;
   // H-6: keep the H-1 seeded oauth_scopes; tests that add scopes via POST
   // clean those up by id. agents has no seeded rows.
   await sql`TRUNCATE TABLE agents CASCADE`;
   await sql`DELETE FROM oauth_scopes WHERE id LIKE 'test.%'`;
   await sql`DELETE FROM audit_log WHERE action <> 'audit_log.genesis'`;
   await sql`DELETE FROM idempotency_keys`;
+}
+
+/**
+ * H-17 — drain the outbox synchronously into an in-memory producer.
+ *
+ * After H-17, producers write events to `kafka_outbox` inside the business
+ * tx instead of post-commit-publishing. Integration tests that previously
+ * asserted on `kafka.published[...]` would see an empty list unless the
+ * outbox is drained. This helper runs `drainOutboxOnce` against the test
+ * in-memory producer so the existing `kafka.published` assertions keep
+ * working AND prove the outbox pipeline end-to-end on every test that
+ * touches events.
+ *
+ * Call it AFTER the under-test operation and BEFORE the assertion that
+ * reads `kafka.published`.
+ */
+export async function drainTestOutbox(
+  handle: RealDbHandle,
+  producer: InMemoryProducer,
+  batchSize: number = 100
+): Promise<void> {
+  const { drainOutboxOnce } = await import('../../src/lib/kafka/outbox.js');
+  await drainOutboxOnce(handle.db, producer, { batchSize });
 }
 
 export interface BuildIntegrationAppOptions {

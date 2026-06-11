@@ -36,6 +36,7 @@ import {
   SCHEMA_VERSION,
   TOPIC_BRIEFING_EVENTS,
 } from '../../lib/kafka/topics.js';
+import { enqueueOutboxEntry } from '../../lib/kafka/outbox.js';
 import type { KafkaProducerLike } from '../../lib/kafka/producer.js';
 import type { Db } from '../../db/client.js';
 import {
@@ -201,9 +202,14 @@ export async function ingestEvent(
         webhookDeliveryId,
       });
 
-      preparedKafka.push({
-        key: match.accountUuid,
-        value: briefingMatchedPayload,
+      // H-17: enqueue BRIEFING_MATCHED inside the ingest tx — atomic with
+      // the briefing_match row + audit entry. The H-5 `preparedKafka`
+      // post-commit list still exists for backward compat with the test
+      // harness but is now always empty (handed off to outbox here).
+      await enqueueOutboxEntry(tx, {
+        topic: TOPIC_BRIEFING_EVENTS,
+        partitionKey: match.accountUuid,
+        payload: briefingMatchedPayload,
       });
     }
 
@@ -238,17 +244,11 @@ export async function ingestEvent(
     };
   });
 
-  // After-commit Kafka publish. A failure here is logged by the caller but
-  // does not undo the DB rows — webhook_deliveries is the durable fan-out.
-  if (deps.kafka && outboundMessages.length > 0) {
-    for (const m of outboundMessages) {
-      await deps.kafka.publish({
-        topic: TOPIC_BRIEFING_EVENTS,
-        key: m.key,
-        value: m.value,
-      });
-    }
-  }
+  // H-17: post-commit publish removed. BRIEFING_MATCHED now enqueues to the
+  // outbox inside the tx above; the drainer worker
+  // (`src/workers/kafkaOutbox/`) publishes it. `outboundMessages` /
+  // `preparedKafka` are vestigial; keeping the binding so the surrounding
+  // return shape and ordering are visibly unchanged.
 
   return result;
 }

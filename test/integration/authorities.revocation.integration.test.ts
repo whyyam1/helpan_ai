@@ -11,6 +11,7 @@ import { createInProcessSigner } from '../helpers/testAuthorities.js';
 import {
   buildIntegrationApp,
   countAuditEntries,
+  drainTestOutbox,
   getTestDatabaseUrl,
   resetTestData,
   withRealDb,
@@ -102,6 +103,8 @@ describe.skipIf(!hasUrl)('POST /v1/authorities/:id/revoke (real Postgres)', () =
 
   it('revokes an active authority → 200, status=revoked, AUTHORITY_REVOKED published', async () => {
     const id = await issue();
+    // H-17: drain the AUTHORITY_ISSUED outbox entry before clearing.
+    await drainTestOutbox(handle, kafka);
     kafka.clear(); // drop the AUTHORITY_ISSUED publish
     const res = await revoke(id, { reason: 'user_initiated', detail: 'console tap' });
     expect(res.statusCode).toBe(200);
@@ -109,6 +112,8 @@ describe.skipIf(!hasUrl)('POST /v1/authorities/:id/revoke (real Postgres)', () =
     expect(res.json().data.revoked_at).not.toBeNull();
     expect(res.json().data.revocation_reason).toBe('user_initiated');
 
+    // H-17: drain AUTHORITY_REVOKED out of the outbox.
+    await drainTestOutbox(handle, kafka);
     expect(kafka.published).toHaveLength(1);
     expect(kafka.published[0]?.value).toMatchObject({
       event_type: 'AUTHORITY_REVOKED',
