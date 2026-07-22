@@ -705,7 +705,7 @@ Response (201):
 Step-up requirement:
 - Any catalogue scope marked `default_grantable=false` requires a step-up token
 - Fetch from Identiti per §4: `POST /v1/stepup/challenges` then `POST /v1/stepup/verify`
-- For Helpan authority issuance: `operation_kind="helpan.authorities.issue"`, `operation_audience="https://api.helpan.co.ke"` — must be pre-registered with Silvia or the call 400s with `OPERATION_KIND_UNKNOWN`
+- For Helpan authority issuance: `operation_kind="helpan_ai.authority_issuance"`, `operation_audience="helpan_authority_issuance"` (both registered at Identiti 2026-07-20). **`operation_audience` is the non-URI step-up audience `helpan_authority_issuance` — NOT `https://api.helpan.co.ke`** (that is the *customer-token* `requested_audience`, a different value). The old `operation_kind="helpan.authorities.issue"` is unregistered → `400 OPERATION_KIND_UNKNOWN`.
 
 If `IDENTITI_INTERNAL_SIGN_URL` is unset on the rail's side, `POST /v1/authorities` returns 503 `ISSUANCE_DISABLED` and the rest of the rail still runs. Don't panic — issuance is opt-in per env.
 
@@ -1128,7 +1128,7 @@ Partition key: `account_uuid` for account-scoped events. Helpan AI uses the same
 | `authority_usage` increments on every attempt (incl. failed) | §6.22 | Single-spend semantics per §A.1; document on Delegated Authority Contract §4 |
 | Console UI layer deferred | §6.19 | Reactivates when an embedding app schedules integration |
 | Brand-name for `helpan-family-discovery-v1` | §4.8 Per-App Patterns | TBD before Stage 2 |
-| `operation_kind="helpan.authorities.issue"` not yet pre-registered at Identiti | (this section) | Silvia must register before Helpan issuance step-up works |
+| ✅ Helpan step-up op-kind registered at Identiti (2026-07-20) | (this section) | Use `operation_kind="helpan_ai.authority_issuance"`, `operation_audience="helpan_authority_issuance"` — NOT `helpan.authorities.issue` / `https://api.helpan.co.ke` |
 
 ### 7.19 Smoke test against Helpan AI (paste-ready)
 
@@ -1431,7 +1431,7 @@ This is the running list of issues discovered during Klokd's integration. Track 
 | `scope_id` exact-match at validate is the v1.0 contract — no operation→scope resolver yet | RECAP §6.15; v1.0 design decision | v1.1 candidate; today, authority `scope_id` must equal dispatch `target_operation` literally |
 | `authority_usage` increments on every attempt incl. failed; per-period window consumed by the attempt | RECAP §6.22; §A.1 JIT single-spend semantics | Document on Delegated Authority Contract §4 |
 | Dispatch is synchronous-only; rail crash mid-Phase-B leaves a row in `pending` for up to `REAPER_STALE_AFTER_SECONDS` (default 600s) | RECAP §6.21; closed by H-16 reaper | Reaper settles to `failed/REAPER_UNRESOLVED`; retry under a fresh idempotency key |
-| `operation_kind="helpan.authorities.issue"` not yet pre-registered at Identiti — step-up for high-stakes Helpan grants 400s | Discovered while planning H-3 issuance; deferred until first consuming app issues live | Escalated to Silvia; only blocks issuance flows that include behavioural-data scopes |
+| ✅ Helpan step-up op-kind registered at Identiti (2026-07-20): `operation_kind="helpan_ai.authority_issuance"`, `operation_audience="helpan_authority_issuance"` (NOT `helpan.authorities.issue` / the customer-token audience) | Resolved via Identiti handoff | High-stakes + behavioural-data grants now step-up correctly |
 | Helpan Console UI layer deferred (RN library foundation shipped at H-8b; components/screens/HelpanConsole.open() entry pending) | RECAP §6.19 | Reactivates when embedding app schedules integration + Identiti seeds tenant credential + H-4 staging URL wired |
 
 ---

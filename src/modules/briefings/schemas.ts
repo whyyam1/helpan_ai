@@ -25,7 +25,10 @@ export type BriefingStatus = (typeof briefingStatusEnum)[number];
 const ACCOUNT_UUID_PATTERN =
   '^acc_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$';
 const BRIEFING_ID_PATTERN = '^brf_[0-9A-HJKMNP-TV-Z]{26}$';
-const AGENT_ID_PATTERN = '^agt_[0-9A-HJKMNP-TV-Z]{26}$';
+// Relaxed 22 Jul 2026 to match actions/authorities — stable cross-rail agent
+// names (`helpan-klokd-v1`) must be attachable to a briefing. See
+// authorities/schemas.ts for the full rationale. RECAP §6.20.
+const AGENT_ID_PATTERN = '^[a-zA-Z0-9_-]{1,128}$';
 const APP_ID_PATTERN = '^[a-z0-9_]{2,40}$';
 
 export const createBriefingRequestSchema = {

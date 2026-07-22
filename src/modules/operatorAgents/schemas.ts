@@ -10,7 +10,11 @@ const AGENT_STATUS_ENUM = ['active', 'suspended', 'retired'] as const;
 export type AgentClass = (typeof AGENT_CLASS_ENUM)[number];
 export type AgentStatus = (typeof AGENT_STATUS_ENUM)[number];
 
-const AGENT_ID_PATTERN = '^agt_[0-9A-HJKMNP-TV-Z]{26}$';
+// Relaxed 22 Jul 2026 to match actions/authorities/briefings. The response
+// object echoes the stored id, so the strict pattern made `GET
+// /v1/operator/agents/helpan-klokd-v1` fail RESPONSE validation (500) for
+// every stable-named portfolio agent. See authorities/schemas.ts. RECAP §6.20.
+const AGENT_ID_PATTERN = '^[a-zA-Z0-9_-]{1,128}$';
 const APP_ID_PATTERN = '^[a-z0-9_]{2,40}$';
 
 export const registerAgentRequestSchema = {

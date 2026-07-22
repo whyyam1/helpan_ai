@@ -8,7 +8,18 @@
 const ACCOUNT_UUID_PATTERN =
   '^acc_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$';
 const AUTHORITY_ID_PATTERN = '^daa_[0-9A-HJKMNP-TV-Z]{26}$';
-const AGENT_ID_PATTERN = '^agt_[0-9A-HJKMNP-TV-Z]{26}$';
+/**
+ * **AGENT_ID pattern relaxed (22 Jul 2026).** The OpenAPI spec pins
+ * `^agt_[0-9A-HJKMNP-TV-Z]{26}$`, but H-8c admitted stable cross-rail names
+ * (`helpan-kws-v1`, `helpan-klokd-v1`, …) per project rule
+ * `project-stable-agent-ids`, and ALL FIVE portfolio agents are stable-named.
+ * The strict pattern made it impossible to issue an authority naming any
+ * registered portfolio agent — a 400 fired before the request ever reached
+ * Identiti, blocking every grant including the Console flow. Relaxed to match
+ * `src/modules/actions/schemas.ts` so both shapes validate. RECAP §6.20;
+ * App Integration Guide §20.14 item 1.
+ */
+const AGENT_ID_PATTERN = '^[a-zA-Z0-9_-]{1,128}$';
 
 export const PERIOD_ENUM = ['single_use', 'daily', 'weekly', 'monthly'] as const;
 export const AUTHORITY_STATUS_ENUM = ['active', 'expired', 'revoked'] as const;
