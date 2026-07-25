@@ -86,6 +86,12 @@ export function createHttpIdentitiSigner(
             'content-type': contentType,
             authorization: `Identiti-HMAC-SHA256 app_id=${config.appId}, signature=${signature}`,
             [config.timestampHeader]: timestamp,
+            // Identiti's /v1/internal/sign requires an idempotency key (a safe
+            // retry of the same issuance must not double-mint). The DA jti is
+            // unique per issuance and stable across retries, so it is the
+            // natural key. Not part of the HMAC canonical string, so this does
+            // not affect the signature.
+            'x-idempotency-key': input.claims.jti,
           },
           body,
         });
