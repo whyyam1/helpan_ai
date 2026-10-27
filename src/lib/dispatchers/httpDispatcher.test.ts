@@ -116,6 +116,54 @@ describe('createHttpDispatcher wire format', () => {
     });
   });
 
+  it('klokd: substitutes {operation} into the path and signs the full path', async () => {
+    const captured: Captured[] = [];
+    const d = createHttpDispatcher({
+      rail: 'klokd',
+      baseUrl: 'https://octopus.example',
+      dispatchPath: '/api/v1/agents/dispatch/{operation}',
+      appId: 'helpan_ai',
+      hmacSecret: SECRET,
+      timestampHeader: 'x-helpan-timestamp',
+      fetch: capturingFetch(captured),
+    });
+    const out = await d.dispatch({
+      ...makeInput('klokd'),
+      targetOperation: 'klokd.write.shift_signup',
+    });
+    expect(out.status).toBe('completed');
+
+    const req = captured[0]!;
+    const path = '/api/v1/agents/dispatch/klokd.write.shift_signup';
+    expect(req.url).toBe(`https://octopus.example${path}`);
+
+    const parsed = parseAuthorizationHeader(req.headers['authorization']!);
+    expect(parsed!.railPrefix).toBe('Helpan');
+    const canonical = buildCanonicalString({
+      method: 'POST',
+      pathAndQuery: path,
+      contentType: 'application/json',
+      timestamp: req.headers['x-helpan-timestamp']!,
+      bodySha256Hex: sha256Hex(req.body),
+    });
+    expect(verifyHmac(canonical, SECRET, parsed!.signature)).toBe(true);
+  });
+
+  it('URL-encodes an operation that carries path-unsafe characters', async () => {
+    const captured: Captured[] = [];
+    const d = createHttpDispatcher({
+      rail: 'klokd',
+      baseUrl: 'https://octopus.example',
+      dispatchPath: '/api/v1/agents/dispatch/{operation}',
+      appId: 'helpan_ai',
+      hmacSecret: SECRET,
+      timestampHeader: 'x-helpan-timestamp',
+      fetch: capturingFetch(captured),
+    });
+    await d.dispatch({ ...makeInput('klokd'), targetOperation: '../admin' });
+    expect(captured[0]!.url).toBe('https://octopus.example/api/v1/agents/dispatch/..%2Fadmin');
+  });
+
   it('surfaces a non-2xx as failed with an HTTP-derived code', async () => {
     const d = createHttpDispatcher({
       rail: 'todoku',

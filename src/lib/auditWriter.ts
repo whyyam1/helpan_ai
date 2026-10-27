@@ -53,7 +53,7 @@ const AUDIT_CHAIN_LOCK_KEY = 7268010825743210n; // 'HELPANAI' as ascii roughly
 
 export type AuditActorType = 'user' | 'agent' | 'operator' | 'system';
 export type AuditOutcome = 'success' | 'failure';
-export type AuditTargetRail = 'kipkiren_pay' | 'identiti' | 'todoku';
+export type AuditTargetRail = 'kipkiren_pay' | 'identiti' | 'todoku' | 'klokd';
 
 export interface AppendAuditEntryInput {
   readonly actorType: AuditActorType;

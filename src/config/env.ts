@@ -107,6 +107,12 @@ export interface AppConfig {
     readonly kipkirenPay: OutboundRailConfig;
     readonly todoku: OutboundRailConfig;
     readonly identiti: OutboundRailConfig;
+    /**
+     * Klokd (octopus-api) executes Klokd-native scopes such as
+     * `klokd.write.shift_signup`. It verifies Helpan's HMAC with Klokd's own
+     * Helpan tenant secret, so `hmacSecret` here is that same value.
+     */
+    readonly klokd: OutboundRailConfig;
     /** Per-dispatch HTTP timeout in ms (default 15000). */
     readonly timeoutMs: number;
   };
@@ -115,7 +121,11 @@ export interface AppConfig {
 export interface OutboundRailConfig {
   /** Base URL of the target rail (e.g. `https://api.kipkiren.co.ke`). Empty disables. */
   readonly baseUrl: string;
-  /** Path on the target rail that accepts forwarded dispatches. */
+  /**
+   * Path on the target rail that accepts forwarded dispatches. A literal
+   * `{operation}` segment is replaced per call with the URL-encoded
+   * `target_operation` (Klokd routes one path per scope).
+   */
   readonly dispatchPath: string;
   /** Helpan AI's tenant `app_id` at the target rail. */
   readonly appId: string;
@@ -290,6 +300,14 @@ export function loadConfig(): AppConfig {
         hmacSecret: optional('HELPAN_IDENTITI_HMAC_SECRET') ?? '',
         timestampHeader:
           optional('HELPAN_IDENTITI_DISPATCH_TIMESTAMP_HEADER') ?? 'x-identiti-timestamp',
+      },
+      klokd: {
+        baseUrl: optional('HELPAN_KLOKD_URL') ?? '',
+        dispatchPath:
+          optional('HELPAN_KLOKD_DISPATCH_PATH') ?? '/api/v1/agents/dispatch/{operation}',
+        appId: optional('HELPAN_KLOKD_APP_ID') ?? 'helpan_ai',
+        hmacSecret: optional('HELPAN_KLOKD_HMAC_SECRET') ?? '',
+        timestampHeader: optional('HELPAN_KLOKD_TIMESTAMP_HEADER') ?? 'x-helpan-timestamp',
       },
       timeoutMs: intInRange(
         'HELPAN_DISPATCH_TIMEOUT_MS',

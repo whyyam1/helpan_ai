@@ -98,6 +98,13 @@ export function makeTestConfig(overrides: Partial<AppConfig> = {}): AppConfig {
         hmacSecret: '',
         timestampHeader: 'x-identiti-timestamp',
       },
+      klokd: {
+        baseUrl: '',
+        dispatchPath: '/api/v1/agents/dispatch/{operation}',
+        appId: 'helpan_ai',
+        hmacSecret: '',
+        timestampHeader: 'x-helpan-timestamp',
+      },
       timeoutMs: 15000,
     },
     ...overrides,

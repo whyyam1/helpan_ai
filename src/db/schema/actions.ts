@@ -68,7 +68,7 @@ export const actions = pgTable(
       .where(sql`${t.status} = 'pending'`),
     targetRailCheck: check(
       'actions_target_rail_chk',
-      sql`${t.targetRail} IN ('kipkiren_pay', 'identiti', 'todoku')`
+      sql`${t.targetRail} IN ('kipkiren_pay', 'identiti', 'todoku', 'klokd')`
     ),
     statusCheck: check(
       'actions_status_chk',

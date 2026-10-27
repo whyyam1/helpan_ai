@@ -25,6 +25,7 @@ export function buildProductionDispatchers(
     kipkiren_pay: pickDispatcher('kipkiren_pay', config.kipkirenPay, config),
     todoku: pickDispatcher('todoku', config.todoku, config),
     identiti: pickDispatcher('identiti', config.identiti, config),
+    klokd: pickDispatcher('klokd', config.klokd, config),
   };
 }
 

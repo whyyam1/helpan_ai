@@ -21,7 +21,7 @@
  * skipped. Same disabled-by-empty pattern as H-5 webhook fan-out.
  */
 
-export type DispatcherTargetRail = 'kipkiren_pay' | 'identiti' | 'todoku';
+export type DispatcherTargetRail = 'kipkiren_pay' | 'identiti' | 'todoku' | 'klokd';
 
 export interface DispatchInput {
   /** Target rail (drives selection). */

@@ -19,7 +19,7 @@ const AUTHORITY_ID_PATTERN = '^daa_[0-9A-HJKMNP-TV-Z]{26}$';
 const TRACEPARENT_PATTERN = '^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$';
 const BUSINESS_OP_ID_PATTERN = '^[a-zA-Z0-9_.:-]{8,128}$';
 
-export const TARGET_RAIL_ENUM = ['kipkiren_pay', 'identiti', 'todoku'] as const;
+export const TARGET_RAIL_ENUM = ['kipkiren_pay', 'identiti', 'todoku', 'klokd'] as const;
 export const ACTION_STATUS_ENUM = ['pending', 'completed', 'failed'] as const;
 export const INITIATED_BY_ENUM = ['human', 'agent', 'system'] as const;
 

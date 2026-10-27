@@ -36,7 +36,12 @@ const RAIL_PREFIX: Record<DispatcherTargetRail, string> = {
   kipkiren_pay: 'KipkirenPay',
   todoku: 'Todoku',
   identiti: 'Identiti',
+  // Klokd is not a KMV rail with its own scheme; octopus-api parses
+  // `Helpan-HMAC-SHA256 app_id=helpan_ai` (agent-dispatch.routes.ts).
+  klokd: 'Helpan',
 };
+
+const OPERATION_PLACEHOLDER = '{operation}';
 
 export interface HttpDispatcherConfig {
   readonly rail: DispatcherTargetRail;
@@ -60,14 +65,20 @@ export function createHttpDispatcher(
   config: HttpDispatcherConfig
 ): TargetRailDispatcher {
   const fetchImpl = config.fetch ?? fetch;
-  const fullUrl = new URL(config.dispatchPath, config.baseUrl);
-  const pathAndQuery = `${fullUrl.pathname}${fullUrl.search}`;
   const railPrefix = RAIL_PREFIX[config.rail];
   const timeoutMs = config.timeoutMs ?? 15000;
 
   return {
     rail: config.rail,
     async dispatch(input: DispatchInput): Promise<DispatchOutcome> {
+      const fullUrl = new URL(
+        config.dispatchPath.replace(
+          OPERATION_PLACEHOLDER,
+          encodeURIComponent(input.targetOperation)
+        ),
+        config.baseUrl
+      );
+      const pathAndQuery = `${fullUrl.pathname}${fullUrl.search}`;
       // Helpan-AI-side envelope: target rail receives operation + opaque
       // payload + the cross-rail audit fields they MUST persist (§A.11).
       const body = JSON.stringify({

@@ -57,6 +57,7 @@ describe.skipIf(!hasUrl)('GET /v1/actions + GET /v1/actions/:id (real Postgres)'
         kipkiren_pay: createInMemoryDispatcher({ rail: 'kipkiren_pay' }),
         todoku: createInMemoryDispatcher({ rail: 'todoku' }),
         identiti: createInMemoryDispatcher({ rail: 'identiti' }),
+        klokd: createInMemoryDispatcher({ rail: 'klokd' }),
       },
     }));
   });

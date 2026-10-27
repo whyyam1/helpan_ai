@@ -44,6 +44,7 @@ describe.skipIf(!hasUrl)('POST /v1/actions/dispatch (real Postgres)', () => {
   let kafka: InMemoryProducer;
   let keypair: TestJwksKeypair;
   let kpDispatcher: InMemoryDispatcher;
+  let klokdDispatcher: InMemoryDispatcher;
 
   beforeAll(async () => {
     const h = await withRealDb();
@@ -60,6 +61,7 @@ describe.skipIf(!hasUrl)('POST /v1/actions/dispatch (real Postgres)', () => {
     keypair = generateTestKeypair();
     kafka = createInMemoryProducer();
     kpDispatcher = createInMemoryDispatcher({ rail: 'kipkiren_pay' });
+    klokdDispatcher = createInMemoryDispatcher({ rail: 'klokd' });
     ({ app } = await buildIntegrationApp({
       handle,
       keypair,
@@ -69,6 +71,7 @@ describe.skipIf(!hasUrl)('POST /v1/actions/dispatch (real Postgres)', () => {
         kipkiren_pay: kpDispatcher,
         todoku: createInMemoryDispatcher({ rail: 'todoku' }),
         identiti: createUnconfiguredDispatcher('identiti'),
+        klokd: klokdDispatcher,
       },
     }));
   });
@@ -217,6 +220,36 @@ describe.skipIf(!hasUrl)('POST /v1/actions/dispatch (real Postgres)', () => {
     const types = kafka.published.map((m) => m.value['event_type']);
     expect(types).toContain('ACTION_DISPATCHED');
     expect(types).toContain('ACTION_COMPLETED');
+  });
+
+  it('klokd target — routes to the klokd dispatcher and persists target_rail=klokd (migration 0017)', async () => {
+    const { token } = await setupAuthority({ scopeId: 'klokd.read.worker_reputation' });
+
+    const body = JSON.stringify({
+      account_uuid: ACCOUNT_A,
+      target_rail: 'klokd',
+      target_operation: 'klokd.read.worker_reputation',
+      payload: { worker_ref: 'wkr_test' },
+    });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/actions/dispatch',
+      headers: dispatchHeaders(body, token),
+      payload: body,
+    });
+    expect(res.statusCode).toBe(200);
+    const data = res.json().data;
+    expect(data.status).toBe('completed');
+    expect(data.target_rail).toBe('klokd');
+
+    expect(klokdDispatcher.calls.length).toBe(1);
+    expect(kpDispatcher.calls.length).toBe(0);
+    expect(klokdDispatcher.calls[0]!.targetOperation).toBe('klokd.read.worker_reputation');
+
+    const rows = (await handle.sql`
+      SELECT target_rail FROM actions WHERE id = ${data.id as string}
+    `) as unknown as readonly { target_rail: string }[];
+    expect(rows[0]!.target_rail).toBe('klokd');
   });
 
   it('amount_minor exceeds per-call ceiling → 422 AUTHORITY_LIMIT_EXCEEDED', async () => {
