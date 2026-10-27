@@ -38,6 +38,7 @@ import {
 } from '../../src/lib/kafka/producer.js';
 import type { WebhookTargetResolver } from '../../src/modules/events/service.js';
 import type { DelegatedAuthoritySigner } from '../../src/lib/identitiSigner.js';
+import type { DispatcherRegistry } from '../../src/lib/dispatchers/dispatcher.js';
 import {
   makeMemoryIdempotencyStore,
   makeTestConfig,
@@ -157,7 +158,7 @@ export interface BuildIntegrationAppOptions {
   readonly webhookTargets?: WebhookTargetResolver;
   readonly authoritySigner?: DelegatedAuthoritySigner;
   /** Inject H-4 target-rail dispatchers (in-memory in tests). */
-  readonly dispatchers?: import('../../src/lib/dispatchers/dispatcher.js').DispatcherRegistry;
+  readonly dispatchers?: DispatcherRegistry;
 }
 
 export interface IntegrationAppHandle {

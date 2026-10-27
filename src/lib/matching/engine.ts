@@ -141,10 +141,6 @@ export function matchEventAgainstBriefings(
   event: MatchableEvent,
   briefings: readonly MatchableBriefing[]
 ): readonly BriefingMatch[] {
-  // Import lazily inside the function body to avoid an at-load cycle if a
-  // future per-app matcher imports from this module. The Klokd matcher
-  // currently does — it consumes the public types defined above.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports -- pure static import below
   const matches: BriefingMatch[] = [];
   for (const briefing of briefings) {
     const domain = briefing.intent['domain'];

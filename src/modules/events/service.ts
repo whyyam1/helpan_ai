@@ -94,11 +94,6 @@ export interface IngestEventDeps {
   readonly webhookTargets: WebhookTargetResolver;
 }
 
-interface PreparedKafkaMessage {
-  readonly key: string;
-  readonly value: Record<string, unknown>;
-}
-
 const EVENT_ID_PREFIX = 'evt_';
 const MATCH_ID_PREFIX = 'bmt_';
 const WEBHOOK_DELIVERY_ID_PREFIX = 'whd_';
@@ -108,8 +103,6 @@ export async function ingestEvent(
   input: IngestEventInput
 ): Promise<IngestEventResult> {
   const publishedAt = input.publishedAt ?? new Date();
-  let outboundMessages: PreparedKafkaMessage[] = [];
-
   // Single transaction: every match / audit / webhook row commits together.
   const result: IngestEventResult = await deps.db.transaction(async (tx) => {
     // Idempotency: if the same (app_id, key) already produced an event,
@@ -158,7 +151,6 @@ export async function ingestEvent(
 
     const targetUrl = deps.webhookTargets.resolve(input.appId);
     const traceparent = input.traceparent;
-    const preparedKafka: PreparedKafkaMessage[] = [];
 
     for (const match of matches) {
       const occurredAt = new Date();
@@ -203,9 +195,7 @@ export async function ingestEvent(
       });
 
       // H-17: enqueue BRIEFING_MATCHED inside the ingest tx — atomic with
-      // the briefing_match row + audit entry. The H-5 `preparedKafka`
-      // post-commit list still exists for backward compat with the test
-      // harness but is now always empty (handed off to outbox here).
+      // the briefing_match row + audit entry; the outbox drainer publishes.
       await enqueueOutboxEntry(tx, {
         topic: TOPIC_BRIEFING_EVENTS,
         partitionKey: match.accountUuid,
@@ -235,7 +225,6 @@ export async function ingestEvent(
       },
     });
 
-    outboundMessages = preparedKafka;
     return {
       eventId,
       acceptedAt: inserted.ingestedAt,
@@ -243,12 +232,6 @@ export async function ingestEvent(
       replayed: false,
     };
   });
-
-  // H-17: post-commit publish removed. BRIEFING_MATCHED now enqueues to the
-  // outbox inside the tx above; the drainer worker
-  // (`src/workers/kafkaOutbox/`) publishes it. `outboundMessages` /
-  // `preparedKafka` are vestigial; keeping the binding so the surrounding
-  // return shape and ordering are visibly unchanged.
 
   return result;
 }

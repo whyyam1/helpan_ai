@@ -27,12 +27,13 @@ import type {
 } from './dispatcher.js';
 
 /**
- * HMAC rail prefix per target — matches each rail's `Authorization` scheme
- * (e.g. KP accepts `Kipkiren-HMAC-SHA256 app_id=…`). Mirrors the issuance
- * leg in `src/lib/identitiSigner.ts` which uses `Identiti-HMAC-SHA256`.
+ * HMAC rail prefix per target — must be a `RailPrefix` from platform-shared's
+ * hmac.ts (`KipkirenPay|Identiti|Todoku|Helpan`); the target's header parser
+ * rejects anything else. KP accepts `KipkirenPay-HMAC-SHA256 app_id=…`.
+ * Mirrors the issuance leg in `src/lib/identitiSigner.ts`.
  */
 const RAIL_PREFIX: Record<DispatcherTargetRail, string> = {
-  kipkiren_pay: 'Kipkiren',
+  kipkiren_pay: 'KipkirenPay',
   todoku: 'Todoku',
   identiti: 'Identiti',
 };

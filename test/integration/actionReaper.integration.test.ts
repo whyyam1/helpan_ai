@@ -11,7 +11,7 @@
  * retry), so no dispatcher injection is needed.
  */
 
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { sql as drizzleSql } from 'drizzle-orm';
 import { reapStaleActions } from '../../src/workers/actionReaper/reaper.js';

@@ -42,7 +42,7 @@ function pickDispatcher(
     dispatchPath: perRail.dispatchPath,
     appId: perRail.appId,
     hmacSecret: perRail.hmacSecret,
-    timestampHeader: config.timestampHeader,
+    timestampHeader: perRail.timestampHeader,
     timeoutMs: config.timeoutMs,
   });
 }
