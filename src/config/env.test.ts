@@ -85,7 +85,7 @@ describe('loadConfig', () => {
   });
 
   it('rejects unknown envelope provider', () => {
-    withEnv({ ...VALID_ENV, SECRETS_ENVELOPE_PROVIDER: 'aes' });
+    withEnv({ ...VALID_ENV, SECRETS_ENVELOPE_PROVIDER: 'rot13' });
     expect(() => loadConfig()).toThrow(/SECRETS_ENVELOPE_PROVIDER/);
   });
 

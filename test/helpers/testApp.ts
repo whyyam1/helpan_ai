@@ -54,6 +54,7 @@ export function makeTestConfig(overrides: Partial<AppConfig> = {}): AppConfig {
     },
     secrets: {
       envelopeProvider: 'noop',
+      envelopeOptions: {},
     },
     llm: {
       provider: undefined,

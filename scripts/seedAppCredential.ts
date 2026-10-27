@@ -22,7 +22,8 @@ import postgres from 'postgres';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { sql as drizzleSql } from 'drizzle-orm';
 import { appCredentials } from '../src/db/schema/index.js';
-import { createSecretsEnvelope } from '../src/lib/secretsEnvelope.js';
+import { createSecretsEnvelope, parseEnvelopeOptions } from '../src/lib/secretsEnvelope.js';
+import type { SecretsEnvelopeProvider } from '../src/config/env.js';
 
 const databaseUrl = process.env['DATABASE_URL'];
 if (!databaseUrl) {
@@ -55,7 +56,8 @@ const scopes = scopesCsv
 const plaintextSecret = randomBytes(32).toString('hex');
 
 const envelope = createSecretsEnvelope(
-  (process.env['SECRETS_ENVELOPE_PROVIDER'] ?? 'noop') as 'noop'
+  (process.env['SECRETS_ENVELOPE_PROVIDER'] ?? 'noop') as SecretsEnvelopeProvider,
+  parseEnvelopeOptions(process.env)
 );
 const wrappedSecret = await envelope.encrypt(plaintextSecret);
 

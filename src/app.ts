@@ -158,7 +158,10 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
     await app.register(kafkaPlugin, { producer: kafkaProducer });
   }
 
-  const envelope = createSecretsEnvelope(config.secrets.envelopeProvider);
+  const envelope = createSecretsEnvelope(
+    config.secrets.envelopeProvider,
+    config.secrets.envelopeOptions
+  );
   const credentialStore =
     overrides?.credentialStoreOverride ??
     createPgCredentialStore({ db: app.db, envelope });

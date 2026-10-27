@@ -8,8 +8,9 @@
  */
 
 import { parseKafkaAuth, type KafkaAuth } from '../lib/kafka/connection.js';
+import { parseEnvelopeOptions, type SecretsEnvelopeOptions } from '../lib/secretsEnvelope.js';
 
-export type SecretsEnvelopeProvider = 'noop' | 'kms' | 'supabase-vault';
+export type SecretsEnvelopeProvider = 'noop' | 'aes-gcm' | 'kms' | 'supabase-vault';
 
 export interface AppConfig {
   readonly nodeEnv: 'development' | 'test' | 'production';
@@ -35,6 +36,8 @@ export interface AppConfig {
 
   readonly secrets: {
     readonly envelopeProvider: SecretsEnvelopeProvider;
+    /** Keys for `aes-gcm` (SECRETS_ENVELOPE_KEY[_ID], optional PREVIOUS pair). */
+    readonly envelopeOptions: SecretsEnvelopeOptions;
   };
 
   readonly llm: {
@@ -183,9 +186,9 @@ function asLogLevel(raw: string | undefined): AppConfig['logLevel'] {
 
 function asEnvelopeProvider(raw: string | undefined): SecretsEnvelopeProvider {
   const v = raw ?? 'noop';
-  if (v === 'noop' || v === 'kms' || v === 'supabase-vault') return v;
+  if (v === 'noop' || v === 'aes-gcm' || v === 'kms' || v === 'supabase-vault') return v;
   throw new Error(
-    `SECRETS_ENVELOPE_PROVIDER must be one of noop|kms|supabase-vault; got "${v}"`
+    `SECRETS_ENVELOPE_PROVIDER must be one of noop|aes-gcm|kms|supabase-vault; got "${v}"`
   );
 }
 
@@ -248,6 +251,7 @@ export function loadConfig(): AppConfig {
 
     secrets: {
       envelopeProvider: asEnvelopeProvider(optional('SECRETS_ENVELOPE_PROVIDER')),
+      envelopeOptions: parseEnvelopeOptions(process.env),
     },
 
     llm: {
