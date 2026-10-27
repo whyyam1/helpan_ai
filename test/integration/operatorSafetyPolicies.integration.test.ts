@@ -125,6 +125,64 @@ describe.skipIf(!hasUrl)('/v1/operator/safety-policies (real Postgres)', () => {
     expect(replace.json().data.content_moderation_rules.length).toBe(1);
   });
 
+  it('POST mints the id (201), audits the create, and the id is PUT-replaceable', async () => {
+    const raw = JSON.stringify({ app_id: 'chapaa', audience_posture: 'general' });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/operator/safety-policies',
+      headers: {
+        ...hmacHeaders({ method: 'POST', url: '/v1/operator/safety-policies', body: raw }),
+        'x-idempotency-key': randomUUID(),
+      },
+      payload: raw,
+    });
+    expect(res.statusCode).toBe(201);
+    const id = res.json().data.id as string;
+    expect(id).toMatch(/^sfp_[0-9A-HJKMNP-TV-Z]{26}$/);
+    expect(res.json().data.app_id).toBe('chapaa');
+
+    const audit = (await handle.sql`
+      SELECT action FROM audit_log WHERE resource_id = ${id}
+    `) as unknown as readonly { action: string }[];
+    expect(audit.map((a) => a.action)).toEqual(['safety_policy.create']);
+
+    const replace = await putPolicy(app, id, { id, app_id: 'chapaa', category_blacklist: ['x'] });
+    expect(replace.statusCode).toBe(200);
+  });
+
+  it('POST for an app that already has a policy → 409 SAFETY_POLICY_APP_HAS_POLICY', async () => {
+    const id = makePolicyId('CHAPAA01');
+    expect((await putPolicy(app, id, { id, app_id: 'chapaa' })).statusCode).toBe(201);
+    const raw = JSON.stringify({ app_id: 'chapaa' });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/operator/safety-policies',
+      headers: {
+        ...hmacHeaders({ method: 'POST', url: '/v1/operator/safety-policies', body: raw }),
+        'x-idempotency-key': randomUUID(),
+      },
+      payload: raw,
+    });
+    expect(res.statusCode).toBe(409);
+    expect(res.json().error.code).toBe('SAFETY_POLICY_APP_HAS_POLICY');
+  });
+
+  it('POST ignores a client-supplied id (rail-wide removeAdditional) and mints its own', async () => {
+    const clientId = makePolicyId('CLIENTID');
+    const raw = JSON.stringify({ id: clientId, app_id: 'chapaa' });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/operator/safety-policies',
+      headers: {
+        ...hmacHeaders({ method: 'POST', url: '/v1/operator/safety-policies', body: raw }),
+        'x-idempotency-key': randomUUID(),
+      },
+      payload: raw,
+    });
+    expect(res.statusCode).toBe(201);
+    expect(res.json().data.id).not.toBe(clientId);
+  });
+
   it('PUT with body.id != path policy_id → 400 REQ_INVALID', async () => {
     const pathId = makePolicyId('PATHID01');
     const bodyId = makePolicyId('BODYID01');

@@ -77,6 +77,20 @@ export const putSafetyPolicyRequestSchema = {
   },
 } as const;
 
+/**
+ * POST /v1/operator/safety-policies — same body as PUT minus `id`; the rail
+ * mints the `sfp_<ULID>` so operators never invent ids (RECAP §6.12).
+ */
+const { id: _putOnlyId, ...createProperties } = putSafetyPolicyRequestSchema.properties;
+
+export const createSafetyPolicyRequestSchema = {
+  $id: 'helpan-ai/CreateSafetyPolicyRequest',
+  type: 'object',
+  required: ['app_id'],
+  additionalProperties: false,
+  properties: createProperties,
+} as const;
+
 const safetyPolicyObjectSchema = {
   type: 'object',
   required: ['id', 'app_id'],

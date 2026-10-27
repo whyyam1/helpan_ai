@@ -2,6 +2,7 @@
  * /v1/operator/safety-policies routes.
  *
  *   GET  /operator/safety-policies              — list all
+ *   POST /operator/safety-policies              — create; the rail mints the id
  *   PUT  /operator/safety-policies/:policy_id   — upsert (RFC-compliant)
  *
  * All paths require HMAC + `helpan:admin`. PUT is idempotent on the
@@ -14,6 +15,7 @@ import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { successResponse } from '@kmv/platform-shared/envelope';
 import { requireAdminScope } from '../../lib/scopeCheck.js';
 import {
+  createSafetyPolicyRequestSchema,
   putSafetyPolicyRequestSchema,
   safetyPolicyListResponseSchema,
   safetyPolicyResponseSchema,
@@ -22,14 +24,18 @@ import {
   type LocationPrecisionFloor,
 } from './schemas.js';
 import {
+  createSafetyPolicy,
   listAllSafetyPolicies,
   putSafetyPolicy,
   type OperatorAuditContext,
+  type PutSafetyPolicyArgs,
 } from './service.js';
 
 interface PolicyIdParams {
   policy_id: string;
 }
+
+type CreateBody = Omit<PutBody, 'id'>;
 
 interface PutBody {
   id: string;
@@ -53,6 +59,25 @@ const POLICY_ID_PARAMS_SCHEMA = {
 function headerString(value: string | string[] | undefined): string | undefined {
   if (value === undefined) return undefined;
   return Array.isArray(value) ? value[0] : value;
+}
+
+function toServiceArgs(body: CreateBody): Omit<PutSafetyPolicyArgs, 'id'> {
+  return {
+    appId: body.app_id,
+    ...(body.category_whitelist !== undefined
+      ? { categoryWhitelist: body.category_whitelist }
+      : {}),
+    ...(body.category_blacklist !== undefined
+      ? { categoryBlacklist: body.category_blacklist }
+      : {}),
+    ...(body.content_moderation_rules !== undefined
+      ? { contentModerationRules: body.content_moderation_rules }
+      : {}),
+    ...(body.audience_posture !== undefined ? { audiencePosture: body.audience_posture } : {}),
+    ...(body.location_precision_floor !== undefined
+      ? { locationPrecisionFloor: body.location_precision_floor }
+      : {}),
+  };
 }
 
 function buildAuditContext(request: FastifyRequest): OperatorAuditContext {
@@ -79,6 +104,25 @@ export const operatorSafetyPoliciesRoutes: FastifyPluginAsync = async (fastify) 
     }
   );
 
+  fastify.post<{ Body: CreateBody }>(
+    '/operator/safety-policies',
+    {
+      schema: {
+        body: createSafetyPolicyRequestSchema,
+        response: { 201: safetyPolicyResponseSchema },
+      },
+    },
+    async (request, reply) => {
+      requireAdminScope(request);
+      const dto = await createSafetyPolicy(
+        fastify.db,
+        buildAuditContext(request),
+        toServiceArgs(request.body)
+      );
+      return reply.code(201).send(successResponse(dto, request.requestId));
+    }
+  );
+
   fastify.put<{ Params: PolicyIdParams; Body: PutBody }>(
     '/operator/safety-policies/:policy_id',
     {
@@ -98,25 +142,7 @@ export const operatorSafetyPoliciesRoutes: FastifyPluginAsync = async (fastify) 
         fastify.db,
         buildAuditContext(request),
         request.params.policy_id,
-        {
-          id: body.id,
-          appId: body.app_id,
-          ...(body.category_whitelist !== undefined
-            ? { categoryWhitelist: body.category_whitelist }
-            : {}),
-          ...(body.category_blacklist !== undefined
-            ? { categoryBlacklist: body.category_blacklist }
-            : {}),
-          ...(body.content_moderation_rules !== undefined
-            ? { contentModerationRules: body.content_moderation_rules }
-            : {}),
-          ...(body.audience_posture !== undefined
-            ? { audiencePosture: body.audience_posture }
-            : {}),
-          ...(body.location_precision_floor !== undefined
-            ? { locationPrecisionFloor: body.location_precision_floor }
-            : {}),
-        }
+        { id: body.id, ...toServiceArgs(body) }
       );
       const statusCode = result.created ? 201 : 200;
       return reply.code(statusCode).send(successResponse(result.dto, request.requestId));

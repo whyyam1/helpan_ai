@@ -9,6 +9,7 @@
  * Default whitelist/blacklist/moderation arrays match the table defaults.
  */
 
+import { generateUlid } from '@kmv/platform-shared/ulid';
 import { appendAuditEntry } from '../../lib/auditWriter.js';
 import type { Db } from '../../db/client.js';
 import {
@@ -84,6 +85,21 @@ export async function listAllSafetyPolicies(db: Db): Promise<readonly SafetyPoli
 interface PutResult {
   readonly dto: SafetyPolicyDto;
   readonly created: boolean;
+}
+
+/**
+ * POST create: mints the id and runs the PUT insert path, so validation,
+ * the one-policy-per-app 409 and the `safety_policy.create` audit entry are
+ * shared rather than duplicated.
+ */
+export async function createSafetyPolicy(
+  db: Db,
+  audit: OperatorAuditContext,
+  args: Omit<PutSafetyPolicyArgs, 'id'>
+): Promise<SafetyPolicyDto> {
+  const id = `sfp_${generateUlid()}`;
+  const result = await putSafetyPolicy(db, audit, id, { ...args, id });
+  return result.dto;
 }
 
 export async function putSafetyPolicy(
