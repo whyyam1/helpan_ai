@@ -60,7 +60,7 @@ The MVP is not complete until all four consuming-app integrations are live and p
 1. **Helpan Klokd** — casual labour marketplace agent. Beta live. Shift matching, M-Pesa-native pay-on-completion orchestration, worker reputation signals. Highest integration readiness.
 2. **Helpan Lunch Drop** — food delivery agent. Beta live. ZoneFeed personalisation augmentation, weekly lunch plan briefings, reliability nudges.
 3. **Helpan Chapaa** — savings agent. Advanced build. MMF rebalancing at suggest-only default. Credit unlock orchestration. Highest regulatory and financial stakes.
-4. **Helpan [Family-Discovery App]** — family-friendly consumer discovery agent. New build. Agent capability is the product's primary differentiator. Lowest current maturity; benefits from lessons of the first three integrations.
+4. **Helpan Nyumbani** — family-friendly consumer discovery agent. New build. Agent capability is the product's primary differentiator. Lowest current maturity; benefits from lessons of the first three integrations.
 
 ### 3.3 What the MVP is not
 
@@ -157,7 +157,7 @@ The MVP is not a prototype, a sandbox, or an internal tool. It is a production r
 
 ### 4.3 Consuming-app integrations in v1.0
 
-**Helpan [Family-Discovery App] — hard MVP gate (priority 4)**
+**Helpan Nyumbani — hard MVP gate (priority 4)**
 - Briefing-based real-time discovery alerts.
 - Standing-basket auto-replenishment (via Kipkiren Pay programmable money).
 - Merchant-side AI clienteling (broadcast drafting, timing suggestions).
@@ -307,7 +307,7 @@ All Stage 0 criteria met, plus:
 - [ ] Helpan Klokd wired in staging — shift briefings, employer shift-fill, pay-on-completion via Kipkiren Pay.
 - [ ] Helpan Lunch Drop wired in staging — ZoneFeed augmentation, weekly plan briefings, reliability nudges.
 - [ ] Helpan Chapaa wired in staging — goal nudges, round-up prompts, MMF suggest flow, credit unlock.
-- [ ] Helpan [Family-Discovery App] wired in staging — briefings, matching, dispatch, family-safe policy, Helpan Console.
+- [ ] Helpan Nyumbani wired in staging — briefings, matching, dispatch, family-safe policy, Helpan Console.
 
 **SDK**
 - [ ] React Native SDK published to internal registry.
@@ -336,7 +336,7 @@ All Stage 1 criteria met, plus:
 - [ ] Helpan Klokd live in production for closed beta cohort (minimum 50 workers and 20 employers).
 - [ ] Helpan Lunch Drop live in production for closed beta cohort (minimum 50 users).
 - [ ] Helpan Chapaa live in production for closed beta cohort (minimum 50 users).
-- [ ] Helpan [Family-Discovery App] live in production for closed beta cohort (minimum 50 users).
+- [ ] Helpan Nyumbani live in production for closed beta cohort (minimum 50 users).
 - [ ] Helpan Console UX validated with minimum 10 real users (§13.2 S11).
 
 **Compliance**
@@ -469,7 +469,7 @@ These are the metrics by which the MVP will be judged at 30, 60, and 90 days pos
 - Delegated authority revocation rate (as a % of issued) — baseline to be established in closed beta.
 - Zero data leakage incidents.
 
-**Helpan [Family-Discovery App]**
+**Helpan Nyumbani**
 - % of active users with at least one live briefing within 30 days of onboarding.
 - Briefing-to-notification conversion rate (briefings that fire at least one match per week).
 - Standing-basket activation rate (% of users who set up at least one auto-replenishment).

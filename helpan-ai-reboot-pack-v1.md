@@ -84,7 +84,7 @@ Helpan AI sits **on top** of the other three. It does not own primitives the oth
 
 McKinsey April 2026 reports name AI agents as the channel of choice within 3–5 years; estimated profit-pool risk is 9% global average, 27% deposits, 34% cards. The defensive prescription for wallet providers and superapps: **become the operating system agents prefer**.
 
-The Kirimon response is to ship the rail and the consuming agents (Helpan Klokd, Helpan Lunch Drop, Helpan Chapaa, Helpan [App Name]) **before third-party agents arrive in Kenya**. The rail's defensibility against the A2A bypass threat (agents calling Daraja directly to skip Kipkiren Pay) lies in the abstractions Daraja does not expose: verification primitive, escrow, hold/release, dispute orchestration, AI risk scoring, counterfactual explainer, programmable money.
+The Kirimon response is to ship the rail and the consuming agents (Helpan Klokd, Helpan Lunch Drop, Helpan Chapaa, Helpan Nyumbani) **before third-party agents arrive in Kenya**. The rail's defensibility against the A2A bypass threat (agents calling Daraja directly to skip Kipkiren Pay) lies in the abstractions Daraja does not expose: verification primitive, escrow, hold/release, dispute orchestration, AI risk scoring, counterfactual explainer, programmable money.
 
 The strategic charter in five sentences:
 
@@ -153,7 +153,7 @@ All listed in §5 above.
 ## 7. Locked decisions
 
 ### 7.1 — Rail name
-**Helpan AI.** Confirmed per Confirmation Memo §1. Brand "Helpan" used across consuming-app agent names: Helpan Klokd, Helpan Lunch Drop, Helpan Chapaa, Helpan [App Name].
+**Helpan AI.** Confirmed per Confirmation Memo §1. Brand "Helpan" used across consuming-app agent names: Helpan Klokd, Helpan Lunch Drop, Helpan Chapaa, Helpan Nyumbani.
 
 ### 7.2 — Domain
 `helpan.co.ke`. Sandbox `sandbox.helpan.co.ke`, pre-production `pre.helpan.co.ke`, production `api.helpan.co.ke` — all under the KMV `.co.ke` family for regulated rails.
@@ -179,7 +179,7 @@ Helpan AI defines scopes; Identiti issues OAuth tokens. Default-most-restrictive
 **Open per Confirmation Memo §5.8.** Architecture is provider-agnostic with configurable provider per app override. Decision deferred; not blocking.
 
 ### 7.9 — Family-discovery app name
-**Placeholder `[App Name]`** through Stage 0–1 per Confirmation Memo §5.5. Lock required before Stage 2.
+**Name locked 27 Oct 2026: Nyumbani** (Confirmation Memo §5.5 resolved).
 
 ### 7.10 — Stage progression
 Stage 0 (Specification) → Stage 1 (Internal Alpha, ~8 weeks from build kick-off) → Stage 2 (Closed Beta) → Stage 3 (Production GA). Per DoD §6.
@@ -260,7 +260,7 @@ To be folded into Platform Rails Reboot Pack v1.3 by Chamia:
 - **Kipkiren Pay** — payment, CBK-licensed (the only one), Kipkiren Pay Ltd, KES 20M capital, M-Pesa native, no cards v1, programmable money elevated to v1.
 - **Identiti** — identity, OAuth issuance, step-up + phone tokens, IAD on KYC vendor RFQ (scan-driven), JIT identity posture, auth JWT TTL ≤1h elevated.
 - **Todoku** — comms, template-only, anti-phishing/anti-vishing copy mandatory, velocity-burst envelope component, sender-ID monitoring v1.1.
-- **Helpan AI** — agent rail, delegated authority + consent + audit + scope catalogue, no CBK exposure, four flagship integrations: Klokd, Lunch Drop, Chapaa, [App Name].
+- **Helpan AI** — agent rail, delegated authority + consent + audit + scope catalogue, no CBK exposure, four flagship integrations: Klokd, Lunch Drop, Chapaa, Nyumbani.
 
 ### 9.2 The cardinal rule
 Helpan AI orchestrates; never duplicates rail functionality. No funds, no credit, no yield, no float, no off-ledger netting.
@@ -269,7 +269,7 @@ Helpan AI orchestrates; never duplicates rail functionality. No funds, no credit
 1. Helpan Klokd — beta live; pay-on-completion; reputation surfacing.
 2. Helpan Lunch Drop — augmentation, not replacement; weekly plans; reliability nudges.
 3. Helpan Chapaa — highest stakes; suggest-only MMF v1.0; credit-unlock via partner-lender.
-4. Helpan [App Name] (family-discovery) — agent-native first; standing-basket; family-friendly safety.
+4. Helpan Nyumbani (family-discovery) — agent-native first; standing-basket; family-friendly safety.
 
 ### 9.4 The most security-critical primitive
 Delegated authority token. RS256 signed. Carries `actor`, `initiated_by`, scope-list with limits. Validated per call against revocation endpoint. 60-second positive cache; no negative cache. CAEP real-time revocation v1.1.

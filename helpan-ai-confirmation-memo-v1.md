@@ -68,7 +68,7 @@ DoD §3.2 / §4.3 names Helpan Klokd a **priority-1 v1.0 hard MVP gate** (beta l
 Programmable money is unmentioned in Reboot Pack v1.2 §6 but elevated to v1 by Helpan corpus §3.8. **Proposed:** Output Plan item 8 produces a **recommendation** to KP engineering and Chamia, not a binding scope change. The actual KP v1 scope change is Chamia's call after KP engineering reviews feasibility. **Question:** confirm recommendation-class output.
 
 ### 5.5 Family-discovery app — placeholder name
-Name is TBD (Sasa, Hapa, or other). DoD §12 accepts "working name TBD" through Stage 0–1; lock by Stage 2. **Proposed:** all artefacts use placeholder **Helpan [App Name]**; freeze before Stage 2. **Question:** confirm — or provide the name now to remove a small disambiguation cost.
+Name is TBD (Sasa, Hapa, or other). DoD §12 accepts "working name TBD" through Stage 0–1; lock by Stage 2. **Proposed:** all artefacts use a placeholder; freeze before Stage 2. **Resolved 27 Oct 2026:** **Nyumbani**. The operator delegated the choice; ids stay `family_discovery`. **Question:** confirm — or provide the name now to remove a small disambiguation cost.
 
 ### 5.6 Nightpulse
 Instruction Pack §11.6 names Helpan Nightpulse as a v1 consuming app; DoD §5 defers Helpan Nightpulse to v1.2; Reboot Pack v1.2 §1 does not list Nightpulse in the portfolio. **Proposed:** Nightpulse is in the portfolio; Helpan Nightpulse is v1.2; the v1.0 rail must architect for adult-audience safety posture (so Nightpulse can plug in at v1.2 without re-architecture). **Question:** confirm all three.

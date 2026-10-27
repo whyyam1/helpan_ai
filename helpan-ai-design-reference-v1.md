@@ -37,7 +37,7 @@ Helpan AI is the **agent rail** — the fourth platform rail in the Kirimon Mark
 
 The rail is being built in direct response to the **disintermediation thesis**: that AI agents will become the channel of choice for consumer banking and a meaningful share of consumer commerce within three to five years. McKinsey's April 2026 banking report estimates global incumbent profit-pool risk at 9% on average, 27% for deposits, 34% for cards. The mechanism is the removal of consumer inertia — agents move money, build baskets, and arbitrate providers in seconds. The defensive prescription for wallet providers and superapps is unambiguous: become the operating system agents prefer.
 
-The Kirimon response is to ship the rail and the consuming agents **before third-party agents arrive in Kenya**. Each consuming app — Helpan Klokd, Helpan Lunch Drop, Helpan Chapaa, Helpan [App Name] for the new family-discovery app — runs on the same rail with the same security model, the same consent surface, and the same integration patterns. The rail's defensibility against agents bypassing it (calling Daraja directly to skip Kipkiren Pay) lies in the abstractions Daraja does not expose: the verification primitive, escrow, hold/release, dispute orchestration, AI-mediated risk scoring, the counterfactual explainer, programmable money primitives.
+The Kirimon response is to ship the rail and the consuming agents **before third-party agents arrive in Kenya**. Each consuming app — Helpan Klokd, Helpan Lunch Drop, Helpan Chapaa, Helpan Nyumbani for the new family-discovery app — runs on the same rail with the same security model, the same consent surface, and the same integration patterns. The rail's defensibility against agents bypassing it (calling Daraja directly to skip Kipkiren Pay) lies in the abstractions Daraja does not expose: the verification primitive, escrow, hold/release, dispute orchestration, AI-mediated risk scoring, the counterfactual explainer, programmable money primitives.
 
 The rail is **agent-native, consent-first, regulatory-contained**. Helpan AI does not hold funds, does not extend credit, does not aggregate yield, does not net off-ledger, does not run float — Kipkiren Pay remains the only CBK-licensed entity in the portfolio. Every agent action that touches money, identity, or comms carries a scoped, time-bounded, revocable **delegated authority token**, distinct from a user step-up token. Every active authorisation is visible to the user in the **Helpan Console**, with one-tap revocation. By default, an app's agent reads only its own app's data; cross-app reads require explicit consent and explicit OAuth scope.
 
@@ -87,7 +87,7 @@ The runtime dependency graph between the four rails is:
               ▲                 ▲                   ▲
               └─────────────────┴───────────────────┘
                             consuming apps
-                  (Klokd, Lunch Drop, Chapaa, [App Name], …)
+                  (Klokd, Lunch Drop, Chapaa, Nyumbani, …)
 ```
 
 Helpan AI is **downstream** of the other three rails in the sense that it consumes them. It is **upstream** of the consuming apps in the sense that it orchestrates on their behalf. Consuming apps continue to call Identiti, Kipkiren Pay, and Todoku directly for non-agent flows; Helpan AI is invoked when an agent is involved.
@@ -390,13 +390,13 @@ The graduation from suggest-only to autonomous-with-limits is itself a strategic
 
 **Risks specific to Chapaa.** Regulatory exposure — MMF rebalancing involves CMA-licensed partners and could attract CMA scrutiny if mishandled. The mitigation is the suggest-only v1.0 default and the explicit-limits-only autonomous-rebalancing v1.1 model. Legal sign-off (Instruction Pack §13.1 H14) covers this.
 
-### 8.4 Helpan [App Name] — priority 4 (family-discovery app)
+### 8.4 Helpan Nyumbani — priority 4 (family-discovery app)
 
 **Strategic posture.** The new family-discovery app is being designed agent-native from day one. Briefing-based real-time discovery, standing-basket auto-replenishment, merchant-side AI clienteling. This is the consuming app where the agent **is the primary interaction model** rather than an augmentation.
 
 **Defensibility.** Two layers. The **family-friendly safety policy** — category whitelists, content moderation, no nightlife / alcohol-led / adult content, no location precision below merchant level, no user-to-user agent communication — is the brand-defining differentiator. Any general-purpose agent that could match the discovery feature does not have the family-friendly safety stack. The second layer is **standing-basket auto-replenishment via programmable money** — a flow only Kipkiren Pay can support agent-natively.
 
-**Risks specific to the family-discovery app.** Brand name not yet locked (working candidates: Sasa, Hapa, other). Per Confirmation Memo §5.5, Stage 0 proceeds with placeholder; name lock required by Stage 2. Risk that the placeholder propagates into artefacts that are expensive to retro-fit; mitigation is to use the literal placeholder string `[App Name]` in all references, making search-and-replace at lock time mechanical.
+**Risks specific to the family-discovery app.** Brand name locked 27 Oct 2026 as **Nyumbani** (earlier candidates: Sasa, Hapa). Per Confirmation Memo §5.5, Stage 0 proceeded with a placeholder. **Name locked 27 Oct 2026: Nyumbani.** Risk that the placeholder propagates into artefacts that are expensive to retro-fit; mitigation is to use the literal placeholder string `Nyumbani` in all references, making search-and-replace at lock time mechanical.
 
 **The lessons-from-priorities-1-3 dependency.** The DoD positions this app fourth in priority *because* it benefits from lessons learned in the first three integrations. The structural sequencing is: ship Klokd first (operational learning on agent dispatch and pay-on-completion), Lunch Drop second (learning on briefing storage and matching at volume), Chapaa third (learning on behavioural-data containment and high-stakes consent), family-discovery fourth (applying all of the above to an agent-native-first product).
 
@@ -552,7 +552,7 @@ The strategic timing is **Stage 2 within the window** the disintermediation thes
 
 **Risk.** The brand name does not lock by Stage 2; integration guides require retro-fitting.
 
-**Mitigation.** Placeholder `[App Name]` used literally in artefacts (Confirmation Memo §5.5) so search-and-replace at lock time is mechanical.
+**Mitigation.** ✅ Closed 27 Oct 2026: name locked as **Nyumbani** and applied across the rail artefacts.
 
 ---
 

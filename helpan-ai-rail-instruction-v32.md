@@ -44,7 +44,7 @@ The Helpan family of agents is named per consuming app:
 
 | App | Agent name |
 |---|---|
-| The new family-discovery app | Helpan [App Name] |
+| The new family-discovery app | Helpan Nyumbani |
 | Lunch Drop | Helpan Lunch Drop |
 | Chapaa | Helpan Chapaa |
 | SabakiFresh | Helpan SabakiFresh |
@@ -434,7 +434,7 @@ Agents may want a persistent in-app surface for non-urgent messages (suggestions
 
 ### 11.1 The new family-discovery app (working name TBD — Sasa, Hapa, or similar)
 
-**Helpan agent name:** Helpan [App Name]
+**Helpan agent name:** Helpan Nyumbani
 
 **Primary capabilities:**
 - Briefing-based real-time discovery ("alert me when fresh fish drops within 2km of my home before 6pm")
@@ -643,7 +643,7 @@ This checklist mirrors the platform programme convention. Items are categorised 
 These are decisions that need Chamia's input or strategic clarification before Silvia can finalise design.
 
 1. **Rail name confirmation.** Helpan AI is working; confirm or propose alternative.
-2. **The new family-discovery app's name and brand.** Required to scope Helpan [App Name] and the first consuming app integration.
+2. **The new family-discovery app's name and brand.** Required to scope Helpan Nyumbani and the first consuming app integration.
 3. **Whether the rail builds on Supabase (af-south-1) per existing platform convention, or another stack.** Default assumption: Supabase + Railway, consistent with the rest of the portfolio.
 4. **Whether the agent runtime uses a specific LLM provider as the default (Anthropic, OpenAI, or local).** This affects cost, latency, regulatory posture, and per-app override.
 5. **Pricing model for third-party agent access.** Free during early adoption? Per-call after a threshold? Annual contract? Affects developer portal design.

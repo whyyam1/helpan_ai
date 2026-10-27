@@ -37,7 +37,7 @@ NAMING (current as of 5 May 2026):
 - Identiti (NOT Identity — note the spelling)
 - Helpan AI (the rail)
 - Helpan family naming: Helpan Lunch Drop, Helpan Chapaa, Helpan
-  Kipkiren, Helpan SabakiFresh, Helpan Nightpulse, Helpan [App Name]
+  Kipkiren, Helpan SabakiFresh, Helpan Nightpulse, Helpan Nyumbani
   for the new family-discovery app (TBD).
 
 YOUR FIRST TASK:

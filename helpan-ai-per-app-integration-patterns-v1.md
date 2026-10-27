@@ -335,7 +335,7 @@ Helpan AI's role: surface the credit-unlock moment via aggregate scope `chapaa.r
 
 ---
 
-## 4. Helpan [App Name] — family-discovery (priority 4)
+## 4. Helpan Nyumbani — family-discovery (priority 4)
 
 ### 4.1 Strategic posture
 Agent-native from day one. The agent IS the primary interaction model. Defensibility: family-friendly safety policy + standing-basket auto-replenishment via programmable money — neither replicable by general-purpose agents.
@@ -433,7 +433,7 @@ KP scheduler fires (Sunday 14:00, scheduled per programmable money)
 
 ### 4.8 Brand-name placeholder
 
-Per Confirmation Memo §5.5, the app's name is TBD. All references in this section use `[App Name]` literal placeholder; search-and-replace at name-lock time. Stage 0–1 acceptable; freeze before Stage 2.
+**Locked 27 Oct 2026: Nyumbani** (Swahili, “at home”), resolving Confirmation Memo §5.5. The agent and scope ids stay `helpan-family-discovery-v1` / `family_discovery.*`, because stable ids never change; only display names carry the brand.
 
 ### 4.9 v1.1 additions
 
@@ -471,7 +471,7 @@ Per DoD §5, full cross-app data access flows are v1.1. v1.0: each app's agent r
 | Helpan Klokd | B.1, A.2 (existing) | B.2, C.1 | C.2, C.6, C.7 → v1.1 |
 | Helpan Lunch Drop | B.1 | B.2, C.3 | C.2, C.4 → v1.1 |
 | Helpan Chapaa | B.1, A.3 (existing), S.1 | B.2 | C.3, C.11 → v1.1 |
-| Helpan [App Name] | B.1, **C.3, C.2** | C.1 | C.4 → v1.1 |
+| Helpan Nyumbani | B.1, **C.3, C.2** | C.1 | C.4 → v1.1 |
 
 (IDs reference KP Gap Analysis §6 buckets.)
 

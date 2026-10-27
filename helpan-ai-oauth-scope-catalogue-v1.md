@@ -128,7 +128,7 @@ Identity-sensitive scopes max TTL 900s. Read-aggregate scopes max TTL 86400s.
 | `klokd.write.shift_signup` | write_identity | No (medium) | Sign up for shift on user's behalf |
 | `klokd.write.shift_pay` | write_money | No (high friction; requires step-up) | Trigger pay-on-completion (employer-side agent) |
 
-### 2.8 Family-discovery (Helpan [App Name])
+### 2.8 Family-discovery (Helpan Nyumbani)
 
 | ID | Category | Default grantable | Description |
 |---|---|---|---|

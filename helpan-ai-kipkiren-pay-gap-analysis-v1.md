@@ -56,7 +56,7 @@ Helpan AI introduces a different consumer: **agents acting on the user's behalf,
 | Helpan Klokd | Delegated authority on payment + payout; transactional hold/release | Verification primitive; refund | Dispute orchestration |
 | Helpan Lunch Drop | Delegated authority on payment | Programmable money (for weekly plans) | AI dispute support |
 | Helpan Chapaa | Delegated authority on goal deposit/withdraw; **MMF rebalance is fundamentally new** | Counterfactual explainer | **Credit unlock — needs KP lending or external lender integration** |
-| Helpan [App Name] (family-discovery) | Programmable money; multi-stage escrow | Merchant verification primitive | Conditional release patterns |
+| Helpan Nyumbani (family-discovery) | Programmable money; multi-stage escrow | Merchant verification primitive | Conditional release patterns |
 
 **The headline coordination ask:** the Helpan AI v1.0 build cannot complete without resolution on **delegated authority validation in KP** (Bucket B refactor, ~3 weeks), **programmable money** (Bucket C new, ~6 weeks), and **transactional escrow / hold-release** (Bucket C new, ~4 weeks). These three are the long-pole items. Everything else can ship in v1.1 with documented stub patterns or app-side workarounds at v1.0.
 
@@ -133,7 +133,7 @@ Per DoD §4.3 and Design Reference §8:
 18. **Helpan Klokd:** M-Pesa-native pay-on-completion; worker reputation signal (KP not the source — included for completeness; lives in Klokd's data model, not KP).
 19. **Helpan Lunch Drop:** weekly lunch plan via programmable money; escrow on order pending delivery.
 20. **Helpan Chapaa:** goal deposit/withdraw under delegated authority; MMF rebalancing within user-set limits between CMA-licensed partner MMFs; credit-unlock orchestration (Chapaa's "save first, borrow later" mechanic).
-21. **Helpan [App Name]:** standing-basket auto-replenishment; multi-stage escrow on basket delivery; merchant verification primitive.
+21. **Helpan Nyumbani:** standing-basket auto-replenishment; multi-stage escrow on basket delivery; merchant verification primitive.
 
 ---
 
@@ -462,7 +462,7 @@ For each Helpan AI v1.0 consuming-app integration, the specific KP-side blockers
 
 **v1.0 launch viability:** Yes, with B.1 closed and the credit-unlock partner architecture confirmed. MMF rebalancing as suggest-only is the v1.0 design and not a KP gap (it's a Chapaa UX choice that calls existing endpoints).
 
-### 7.4 Helpan [App Name] — priority 4 (family-discovery)
+### 7.4 Helpan Nyumbani — priority 4 (family-discovery)
 
 **Required from KP:**
 - B.1 — delegated authority on payment (**v1.0 hard**)

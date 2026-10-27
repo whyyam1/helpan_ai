@@ -53,7 +53,7 @@ try {
       .insert(agents)
       .values({
         id: AGENT_ID,
-        name: 'Helpan [App Name] (family-discovery)',
+        name: 'Helpan Nyumbani (family-discovery)',
         agentClass: 'portfolio_app',
         ownerAppId: OWNER_APP_ID,
         status: 'active',
