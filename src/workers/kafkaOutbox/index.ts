@@ -17,12 +17,14 @@
  *   KAFKA_CLIENT_ID                 — default 'helpan-ai-outbox'
  *   KAFKA_OUTBOX_POLL_INTERVAL_MS   — default 1_000 (1 s)
  *   KAFKA_OUTBOX_BATCH_SIZE         — default 50
+ *   KAFKA_SASL_* / KAFKA_SSL        — managed-broker auth (src/lib/kafka/connection.ts)
  *
  * SIGTERM-aware: drains the in-flight tick, disconnects the producer,
  * closes the DB, exits 0.
  */
 
 import { createDbClient } from '../../db/client.js';
+import { parseKafkaAuth } from '../../lib/kafka/connection.js';
 import { createKafkajsProducer, type KafkaProducerLike } from '../../lib/kafka/producer.js';
 import { drainOutboxOnce } from '../../lib/kafka/outbox.js';
 
@@ -60,7 +62,7 @@ async function main(): Promise<void> {
 
   let producer: KafkaProducerLike | null = null;
   if (brokers.length > 0) {
-    producer = createKafkajsProducer({ clientId, brokers });
+    producer = createKafkajsProducer({ clientId, brokers, auth: parseKafkaAuth(process.env) });
     await producer.connect();
     console.warn(`[outbox-worker] connected to brokers: ${brokers.join(',')}`);
   } else {

@@ -7,6 +7,8 @@
  * object. Fastify plugins read from this rather than from process.env directly.
  */
 
+import { parseKafkaAuth, type KafkaAuth } from '../lib/kafka/connection.js';
+
 export type SecretsEnvelopeProvider = 'noop' | 'kms' | 'supabase-vault';
 
 export interface AppConfig {
@@ -84,6 +86,8 @@ export interface AppConfig {
   readonly kafka: {
     readonly brokers: readonly string[];
     readonly clientId: string;
+    /** SASL / TLS for managed brokers (KAFKA_SASL_* / KAFKA_SSL). */
+    readonly auth: KafkaAuth;
   };
 
   /**
@@ -261,6 +265,7 @@ export function loadConfig(): AppConfig {
     kafka: {
       brokers: parseBrokerList(optional('KAFKA_BROKERS')),
       clientId: optional('KAFKA_CLIENT_ID') ?? 'helpan-ai-rail',
+      auth: parseKafkaAuth(process.env),
     },
 
     outboundDispatch: {

@@ -151,6 +151,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
       ? createKafkajsProducer({
           clientId: config.kafka.clientId,
           brokers: config.kafka.brokers,
+          auth: config.kafka.auth,
         })
       : undefined);
   if (kafkaProducer) {

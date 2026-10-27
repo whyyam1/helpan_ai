@@ -74,6 +74,7 @@ export function makeTestConfig(overrides: Partial<AppConfig> = {}): AppConfig {
     kafka: {
       brokers: [],
       clientId: 'helpan-ai-rail-test',
+      auth: { ssl: false },
     },
     outboundDispatch: {
       kipkirenPay: {

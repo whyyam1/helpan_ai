@@ -18,6 +18,7 @@
  */
 
 import { Kafka, Partitioners, type Producer, logLevel } from 'kafkajs';
+import { toKafkajsAuth, type KafkaAuth } from './connection.js';
 
 export interface KafkaMessage {
   readonly topic: string;
@@ -37,6 +38,8 @@ export interface KafkaProducerLike {
 export interface KafkajsProducerConfig {
   readonly clientId: string;
   readonly brokers: readonly string[];
+  /** SASL / TLS for managed brokers — see `./connection.ts`. */
+  readonly auth?: KafkaAuth;
 }
 
 export function createKafkajsProducer(config: KafkajsProducerConfig): KafkaProducerLike {
@@ -44,6 +47,7 @@ export function createKafkajsProducer(config: KafkajsProducerConfig): KafkaProdu
     clientId: config.clientId,
     brokers: [...config.brokers],
     logLevel: logLevel.WARN,
+    ...toKafkajsAuth(config.auth),
   });
   const producer: Producer = kafka.producer({
     allowAutoTopicCreation: false,

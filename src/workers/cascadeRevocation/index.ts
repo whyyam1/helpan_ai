@@ -18,10 +18,12 @@
  *   KAFKA_BROKERS        — required (comma-separated); without it there is
  *                          nothing to consume and the worker exits 1
  *   KAFKA_CLIENT_ID      — optional, default 'helpan-ai-cascade'
+ *   KAFKA_SASL_* / KAFKA_SSL — managed-broker auth (src/lib/kafka/connection.ts)
  */
 
 import { Kafka, logLevel } from 'kafkajs';
 import { createDbClient } from '../../db/client.js';
+import { parseKafkaAuth, toKafkajsAuth } from '../../lib/kafka/connection.js';
 import { createKafkajsProducer } from '../../lib/kafka/producer.js';
 import { generateUlid } from '@kmv/platform-shared/ulid';
 import { handleAccountEvent, type AccountEvent } from './cascade.js';
@@ -49,12 +51,13 @@ async function main(): Promise<void> {
     process.exit(1);
   }
   const clientId = process.env['KAFKA_CLIENT_ID'] ?? 'helpan-ai-cascade';
+  const auth = parseKafkaAuth(process.env);
 
   const { sql, db } = createDbClient({ connectionString: databaseUrl });
-  const producer = createKafkajsProducer({ clientId, brokers });
+  const producer = createKafkajsProducer({ clientId, brokers, auth });
   await producer.connect();
 
-  const kafka = new Kafka({ clientId, brokers, logLevel: logLevel.WARN });
+  const kafka = new Kafka({ clientId, brokers, logLevel: logLevel.WARN, ...toKafkajsAuth(auth) });
   const consumer = kafka.consumer({ groupId: CONSUMER_GROUP });
   await consumer.connect();
   await consumer.subscribe({ topic: TOPIC_IDENTITI_ACCOUNT_EVENTS, fromBeginning: false });
