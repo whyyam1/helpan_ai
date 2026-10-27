@@ -242,10 +242,16 @@ The relying party — Kipkiren Pay, Todoku, or a consuming-app server — calls 
 ```json
 {
   "token": "<JWT from X-Delegated-Authority header>",
-  "intended_operation": "kipkiren_pay.payment.execute",
+  "intended_operation": "kipkiren.write.payments",
   "amount_minor": 250000
 }
 ```
+
+**`intended_operation` is the exact scope ID** the relying party intends to exercise (for example `kipkiren.write.payments`), and `scope_covers` is true only when one of the authority’s `scope_id`s equals it. v1.0 has no operation→scope resolver. *Amended 27 Oct 2026 (proposed Amendment §A.12, RECAP §6.15):* the original example used the operation name `kipkiren_pay.payment.execute`, which never matches a catalogue scope.
+
+**`amount_minor` is a JSON integer** (`KesMinorUnits`). A string is rejected with 400: the rail validates strictly, with no type coercion.
+
+**Usage accounting (RECAP §6.22).** Validate is a pure query and never consumes budget. `POST /v1/actions/dispatch` increments `authority_usage` (amount + call count) **before** the outbound call, so a dispatch that the target rail then rejects still counts against the per-period ceiling. This follows §A.1 JIT semantics: a rejection by the relying party must not let callers retry without spending budget.
 
 ### 4.5 Response (200)
 
@@ -408,7 +414,7 @@ Note: 200 with `valid=false` is intentional. The validate endpoint is a query, n
 |---|---|---|
 | `AUTHORITY_NOT_FOUND` | 404 | JTI does not exist |
 | `AUTHORITY_ALREADY_REVOKED` | 409 | Already revoked |
-| `AUTHORITY_EXPIRED` | 410 | Already past expiry — revocation no-op but still 200 (idempotency) |
+| `AUTHORITY_EXPIRED` | 409 | Already past expiry — revocation is a no-op. *Amended 27 Oct 2026 (proposed Amendment §A.12):* was “410 … but still 200”, which contradicted itself; the rail and OpenAPI return 409, grouped with already-revoked. |
 
 ---
 
