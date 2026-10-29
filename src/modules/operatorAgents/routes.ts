@@ -3,7 +3,7 @@
  *
  *   POST   /operator/agents              — register a new agent
  *   GET    /operator/agents/:agent_id    — read agent detail
- *   PATCH  /operator/agents/:agent_id    — change status (suspend / reactivate / retire)
+ *   PATCH  /operator/agents/:agent_id    — change status (suspend / reactivate / retire) and/or display name
  *
  * All paths require HMAC + `helpan:admin` scope.
  */
@@ -37,7 +37,8 @@ interface AgentIdParams {
 }
 
 interface PatchBody {
-  status: AgentStatus;
+  status?: AgentStatus;
+  name?: string;
   reason?: string;
 }
 
@@ -127,7 +128,8 @@ export const operatorAgentsRoutes: FastifyPluginAsync = async (fastify) => {
         buildAuditContext(request),
         request.params.agent_id,
         {
-          status: body.status,
+          ...(body.status !== undefined ? { status: body.status } : {}),
+          ...(body.name !== undefined ? { name: body.name } : {}),
           ...(body.reason !== undefined ? { reason: body.reason } : {}),
         }
       );

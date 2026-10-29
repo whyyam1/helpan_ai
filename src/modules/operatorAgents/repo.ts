@@ -57,7 +57,8 @@ export async function getAgentById(db: Db, id: string): Promise<AgentRow | null>
 }
 
 export interface UpdateAgentStatusPatch {
-  status: AgentStatus;
+  status?: AgentStatus;
+  name?: string;
   suspendedAt?: Date | null;
   retiredAt?: Date | null;
 }
@@ -67,10 +68,9 @@ export async function updateAgentStatus(
   id: string,
   patch: UpdateAgentStatusPatch
 ): Promise<AgentRow | null> {
-  const update: Record<string, unknown> = {
-    status: patch.status,
-    updatedAt: new Date(),
-  };
+  const update: Record<string, unknown> = { updatedAt: new Date() };
+  if (patch.status !== undefined) update['status'] = patch.status;
+  if (patch.name !== undefined) update['name'] = patch.name;
   if (patch.suspendedAt !== undefined) update['suspendedAt'] = patch.suspendedAt;
   if (patch.retiredAt !== undefined) update['retiredAt'] = patch.retiredAt;
   const rows = (await db

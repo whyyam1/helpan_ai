@@ -33,10 +33,13 @@ export const registerAgentRequestSchema = {
 export const updateAgentStatusRequestSchema = {
   $id: 'helpan-ai/UpdateAgentStatusRequest',
   type: 'object',
-  required: ['status'],
+  // A status change, a display-name change, or both. The id is stable and
+  // never changes; `name` is what the Console shows users.
+  anyOf: [{ required: ['status'] }, { required: ['name'] }],
   additionalProperties: false,
   properties: {
     status: { type: 'string', enum: AGENT_STATUS_ENUM },
+    name: { type: 'string', minLength: 1, maxLength: 200 },
     reason: { type: 'string', maxLength: 500 },
   },
 } as const;

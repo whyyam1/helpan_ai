@@ -157,6 +157,46 @@ describe.skipIf(!hasUrl)('/v1/operator/agents (real Postgres)', () => {
     expect(retired.json().data.retired_at).not.toBeNull();
   });
 
+  it('PATCH name renames the agent, keeps status, and audits agent.rename', async () => {
+    const created = await registerAgentHelper(app, {
+      name: 'Helpan [App Name] (family-discovery)',
+      agent_class: 'portfolio_app',
+      owner_app_id: 'family_discovery',
+    });
+    const id = created.json().data.id as string;
+
+    const send = (body: object) => {
+      const raw = JSON.stringify(body);
+      return app.inject({
+        method: 'PATCH',
+        url: `/v1/operator/agents/${id}`,
+        headers: {
+          ...hmacHeaders({ method: 'PATCH', url: `/v1/operator/agents/${id}`, body: raw }),
+          'x-idempotency-key': randomUUID(),
+        },
+        payload: raw,
+      });
+    };
+
+    const renamed = await send({ name: 'Helpan Nyumbani (family-discovery)', reason: 'brand lock' });
+    expect(renamed.statusCode).toBe(200);
+    expect(renamed.json().data.name).toBe('Helpan Nyumbani (family-discovery)');
+    expect(renamed.json().data.id).toBe(id);
+    expect(renamed.json().data.status).toBe(created.json().data.status);
+
+    const audit = (await handle.sql`
+      SELECT action, detail FROM audit_log WHERE resource_id = ${id} ORDER BY created_at, id
+    `) as unknown as readonly { action: string; detail: Record<string, unknown> }[];
+    expect(audit.map((a) => a.action)).toEqual(['agent.register', 'agent.rename']);
+    expect(audit[1]!.detail).toMatchObject({
+      from: 'Helpan [App Name] (family-discovery)',
+      to: 'Helpan Nyumbani (family-discovery)',
+    });
+
+    // Neither status nor name → 400.
+    expect((await send({ reason: 'nothing' })).statusCode).toBe(400);
+  });
+
   it('non-admin tenant gets 403 AUTH_SCOPE_REQUIRED on POST', async () => {
     const raw = JSON.stringify({
       name: 'denied',

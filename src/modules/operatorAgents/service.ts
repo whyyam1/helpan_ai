@@ -15,6 +15,7 @@ import {
   insertAgent,
   updateAgentStatus,
   type AgentRow,
+  type UpdateAgentStatusPatch,
 } from './repo.js';
 import type { AgentClass, AgentDto, AgentStatus } from './schemas.js';
 
@@ -124,7 +125,9 @@ export async function readAgent(db: Db, id: string): Promise<AgentDto | null> {
 }
 
 export interface UpdateStatusArgs {
-  status: AgentStatus;
+  status?: AgentStatus;
+  /** New display name; the stable id never changes. */
+  name?: string;
   reason?: string;
 }
 
@@ -138,31 +141,49 @@ export async function changeAgentStatus(
     const existing = await getAgentById(tx as unknown as Db, id);
     if (!existing) return null;
     const now = new Date();
-    const patch: { status: AgentStatus; suspendedAt?: Date | null; retiredAt?: Date | null } = {
-      status: args.status,
-    };
-    if (args.status === 'suspended') patch.suspendedAt = now;
-    if (args.status === 'active') patch.suspendedAt = null;
-    if (args.status === 'retired') patch.retiredAt = now;
+    const patch: UpdateAgentStatusPatch = {};
+    if (args.status !== undefined) {
+      patch.status = args.status;
+      if (args.status === 'suspended') patch.suspendedAt = now;
+      if (args.status === 'active') patch.suspendedAt = null;
+      if (args.status === 'retired') patch.retiredAt = now;
+    }
+    if (args.name !== undefined) patch.name = args.name;
     const row = await updateAgentStatus(tx as unknown as Db, id, patch);
     if (!row) return null;
-    await appendAuditEntry(tx, {
-      actorType: 'operator',
+    const auditBase = {
+      actorType: 'operator' as const,
       actorId: `app:${audit.appId}`,
-      action: 'agent.status_change',
       resourceType: 'agent',
       resourceId: id,
       appId: audit.appId,
       requestId: audit.requestId,
       ...(audit.traceparent ? { traceparent: audit.traceparent } : {}),
-      outcome: 'success',
-      initiatedBy: 'human',
-      detail: {
-        from: existing.status,
-        to: args.status,
-        ...(args.reason !== undefined ? { reason: args.reason } : {}),
-      },
-    });
+      outcome: 'success' as const,
+      initiatedBy: 'human' as const,
+    };
+    if (args.status !== undefined) {
+      await appendAuditEntry(tx, {
+        ...auditBase,
+        action: 'agent.status_change',
+        detail: {
+          from: existing.status,
+          to: args.status,
+          ...(args.reason !== undefined ? { reason: args.reason } : {}),
+        },
+      });
+    }
+    if (args.name !== undefined && args.name !== existing.name) {
+      await appendAuditEntry(tx, {
+        ...auditBase,
+        action: 'agent.rename',
+        detail: {
+          from: existing.name,
+          to: args.name,
+          ...(args.reason !== undefined ? { reason: args.reason } : {}),
+        },
+      });
+    }
     return row;
   });
   return updated ? toDto(updated) : null;
