@@ -16,7 +16,10 @@
  * boot instead of silently connecting unauthenticated.
  */
 
-import type { KafkaConfig, SASLOptions } from 'kafkajs';
+import type { KafkaJS } from '@confluentinc/kafka-javascript';
+
+type KafkaConfig = KafkaJS.KafkaConfig;
+type SASLOptions = KafkaJS.SASLOptions;
 
 export type KafkaSaslMechanism = 'plain' | 'scram-sha-256' | 'scram-sha-512';
 
@@ -66,7 +69,7 @@ export function parseKafkaAuth(env: Readonly<Record<string, string | undefined>>
   };
 }
 
-/** The `ssl` / `sasl` slice of a kafkajs `KafkaConfig`. */
+/** The `ssl` / `sasl` slice of the client's KafkaJS-compatible `KafkaConfig`. */
 export function toKafkajsAuth(auth: KafkaAuth | undefined): Pick<KafkaConfig, 'ssl' | 'sasl'> {
   if (!auth) return {};
   return {

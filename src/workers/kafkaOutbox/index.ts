@@ -5,7 +5,7 @@
  *   node dist/workers/kafkaOutbox/index.js  # prod: built
  *
  * Polls `kafka_outbox` for `status='pending'` rows whose
- * `next_attempt_at` is due and publishes them via the kafkajs producer.
+ * `next_attempt_at` is due and publishes them via the Kafka producer.
  * See `src/lib/kafka/outbox.ts` for the drain contract.
  *
  * Configuration (env):

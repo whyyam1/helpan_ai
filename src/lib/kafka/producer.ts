@@ -2,22 +2,23 @@
  * Kafka producer surface.
  *
  * Two implementations:
- *   - `createKafkajsProducer(config)` — real `kafkajs` producer, used in
- *     production. Acks=all + idempotent so duplicates from broker-side
- *     retries are de-duplicated.
+ *   - `createKafkajsProducer(config)` — real producer, used in production, on
+ *     Confluent's maintained `@confluentinc/kafka-javascript` through its
+ *     KafkaJS-compatible API (kafkajs itself is unmaintained). Acks=all +
+ *     idempotent so duplicates from broker-side retries are de-duplicated.
  *   - `createInMemoryProducer()` — captures publishes in an array. Used by
  *     unit and stub-DB integration tests so the rail can be exercised
  *     without a broker.
  *
  * The minimal surface is intentional: `publish(message)` and the lifecycle
  * pair `connect()` / `disconnect()`. Anything more would couple callers to
- * kafkajs's broader API.
+ * the client library's broader API.
  *
  * H-5 is the first user of this module. H-3 will reuse it for
  * `helpan.authority.events`; H-4 for `helpan.action.events`.
  */
 
-import { Kafka, Partitioners, type Producer, logLevel } from 'kafkajs';
+import { KafkaJS } from '@confluentinc/kafka-javascript';
 import { toKafkajsAuth, type KafkaAuth } from './connection.js';
 
 export interface KafkaMessage {
@@ -43,19 +44,25 @@ export interface KafkajsProducerConfig {
 }
 
 export function createKafkajsProducer(config: KafkajsProducerConfig): KafkaProducerLike {
-  const kafka = new Kafka({
-    clientId: config.clientId,
-    brokers: [...config.brokers],
-    logLevel: logLevel.WARN,
-    ...toKafkajsAuth(config.auth),
+  const kafka = new KafkaJS.Kafka({
+    kafkaJS: {
+      clientId: config.clientId,
+      brokers: [...config.brokers],
+      logLevel: KafkaJS.logLevel.WARN,
+      ...toKafkajsAuth(config.auth),
+    },
   });
-  const producer: Producer = kafka.producer({
-    allowAutoTopicCreation: false,
-    idempotent: true,
-    // Default partitioner changed in kafkajs 2.x; pin to LegacyPartitioner so
-    // hash(key) → partition is stable across runs and matches the Identiti /
-    // KP / Todoku rails' partitioning.
-    createPartitioner: Partitioners.LegacyPartitioner,
+  const producer: KafkaJS.Producer = kafka.producer({
+    kafkaJS: {
+      allowAutoTopicCreation: false,
+      idempotent: true,
+      // acks=-1 (all) — survive single-broker loss per Event Bus Contract §1.1.
+      // The Confluent client takes acks on the producer, never per send().
+      acks: -1,
+      // Partitioner: the client's fixed `murmur2_random` (Java-compatible).
+      // Per-key ordering only needs one partitioner per topic, and every
+      // helpan.* topic has exactly one producer — this rail.
+    },
   });
 
   return {
@@ -75,8 +82,6 @@ export function createKafkajsProducer(config: KafkajsProducerConfig): KafkaProdu
             ...(message.headers ? { headers: message.headers } : {}),
           },
         ],
-        // acks=-1 (all) — survive single-broker loss per Event Bus Contract §1.1.
-        acks: -1,
       });
     },
   };

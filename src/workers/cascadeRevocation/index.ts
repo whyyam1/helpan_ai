@@ -21,7 +21,7 @@
  *   KAFKA_SASL_* / KAFKA_SSL — managed-broker auth (src/lib/kafka/connection.ts)
  */
 
-import { Kafka, logLevel } from 'kafkajs';
+import { KafkaJS } from '@confluentinc/kafka-javascript';
 import { createDbClient } from '../../db/client.js';
 import { parseKafkaAuth, toKafkajsAuth } from '../../lib/kafka/connection.js';
 import { createKafkajsProducer } from '../../lib/kafka/producer.js';
@@ -57,10 +57,13 @@ async function main(): Promise<void> {
   const producer = createKafkajsProducer({ clientId, brokers, auth });
   await producer.connect();
 
-  const kafka = new Kafka({ clientId, brokers, logLevel: logLevel.WARN, ...toKafkajsAuth(auth) });
-  const consumer = kafka.consumer({ groupId: CONSUMER_GROUP });
+  const kafka = new KafkaJS.Kafka({
+    kafkaJS: { clientId, brokers, logLevel: KafkaJS.logLevel.WARN, ...toKafkajsAuth(auth) },
+  });
+  // The Confluent client takes fromBeginning on the consumer, not subscribe().
+  const consumer = kafka.consumer({ kafkaJS: { groupId: CONSUMER_GROUP, fromBeginning: false } });
   await consumer.connect();
-  await consumer.subscribe({ topic: TOPIC_IDENTITI_ACCOUNT_EVENTS, fromBeginning: false });
+  await consumer.subscribe({ topic: TOPIC_IDENTITI_ACCOUNT_EVENTS });
 
   let shuttingDown = false;
   const shutdown = async (signal: string) => {
@@ -101,7 +104,7 @@ async function main(): Promise<void> {
           );
         }
       } catch (err) {
-        // Re-throw so kafkajs does not commit the offset — the message is
+        // Re-throw so the client seeks back instead of committing — the message is
         // redelivered. handleAccountEvent is idempotent, so a retry is safe.
         console.error('[cascade-worker] cascade failed, will retry', (err as Error).message);
         throw err;

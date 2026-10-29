@@ -113,7 +113,7 @@ export interface DispatchActionDeps {
    * Vestigial after H-17. The actions module no longer publishes directly —
    * events are enqueued to the `kafka_outbox` table inside the same tx as
    * the business write. The drainer worker (`src/workers/kafkaOutbox/`)
-   * owns the kafkajs connection. Accepted in the deps shape only so the
+   * owns the Kafka connection. Accepted in the deps shape only so the
    * existing routes wiring in `app.ts` (which passes `fastify.kafka`)
    * stays compile-clean; the field is ignored. Will be removed once
    * `app.ts` is rewired post-H-17.
@@ -565,5 +565,5 @@ function cryptoGetRandomValues(arr: Uint8Array): void {
 
 // H-17: `publishActionEvent` was removed. Action events now enqueue to the
 // `kafka_outbox` table inside the same tx as the business write; the
-// drainer worker (src/workers/kafkaOutbox/) owns the kafkajs connection.
+// drainer worker (src/workers/kafkaOutbox/) owns the Kafka connection.
 // See enqueueOutboxEntry usages above in dispatchAction.

@@ -1,7 +1,7 @@
 /**
  * Fastify plugin: decorates `app.kafka` with the rail's producer.
  *
- * The producer is supplied by the caller (either a kafkajs producer in
+ * The producer is supplied by the caller (either the Confluent-client producer in
  * production via `createKafkajsProducer(...)`, or an in-memory stub in
  * tests). The plugin owns its lifecycle — `connect()` at registration,
  * `disconnect()` on `onClose`.

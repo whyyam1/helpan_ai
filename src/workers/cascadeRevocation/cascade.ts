@@ -16,7 +16,7 @@
  * — not handled here.
  *
  * `handleAccountEvent` is the pure-ish testable core: given a parsed event +
- * a DB handle it performs the cascade and returns a count. The kafkajs
+ * a DB handle it performs the cascade and returns a count. The Kafka
  * consumer wiring lives in `index.ts`.
  *
  * Idempotent under Kafka at-least-once delivery: a redelivered event finds

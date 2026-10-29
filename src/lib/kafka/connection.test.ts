@@ -61,7 +61,7 @@ describe('parseKafkaAuth', () => {
 });
 
 describe('toKafkajsAuth', () => {
-  it('maps to the kafkajs ssl / sasl slice', () => {
+  it('maps to the KafkaJS-compatible ssl / sasl slice', () => {
     expect(
       toKafkajsAuth({ ssl: true, sasl: { mechanism: 'plain', username: 'u', password: 'p' } })
     ).toEqual({ ssl: true, sasl: { mechanism: 'plain', username: 'u', password: 'p' } });

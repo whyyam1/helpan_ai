@@ -11,7 +11,7 @@
  *   The drainer worker (`src/workers/kafkaOutbox/`) polls
  *   `status='pending'` rows whose `next_attempt_at` is due, claims them
  *   with FOR UPDATE SKIP LOCKED (multi-replica safe), publishes via the
- *   real kafkajs producer, and marks `delivered` or `abandoned`. The
+ *   real Kafka producer, and marks `delivered` or `abandoned`. The
  *   `drainOutboxOnce` function is shared between the worker loop and
  *   integration tests so the same code path is exercised both places.
  *

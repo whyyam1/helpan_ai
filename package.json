@@ -40,6 +40,7 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@confluentinc/kafka-javascript": "1.11.0",
     "@fastify/sensible": "^5.6.0",
     "@kmv/platform-shared": "file:./vendor/platform-shared",
     "ajv": "^8.17.1",
@@ -48,7 +49,6 @@
     "fastify": "^4.28.1",
     "fastify-plugin": "^4.5.1",
     "jose": "^5.9.6",
-    "kafkajs": "^2.2.4",
     "pino": "^9.5.0",
     "postgres": "^3.4.5",
     "ulid": "^2.3.0"

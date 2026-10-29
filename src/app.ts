@@ -88,7 +88,7 @@ export interface BuildAppOverrides {
   readonly identitiKeyResolver?: JWTVerifyGetKey | KeyLike;
   /** Inject the delegated-authority signer (in-process stub in tests). */
   readonly authoritySigner?: DelegatedAuthoritySigner;
-  /** Inject a Kafka producer (in-memory stub in tests, kafkajs in prod). */
+  /** Inject a Kafka producer (in-memory stub in tests, Confluent client in prod). */
   readonly kafkaProducer?: KafkaProducerLike;
   /** Inject a webhook-target resolver; defaults to env-driven. */
   readonly webhookTargets?: WebhookTargetResolver;
@@ -141,7 +141,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
     await app.register(dbPlugin, { connectionString: config.databaseUrl });
   }
 
-  // Kafka: optional. Tests inject a stub; production wires kafkajs when
+  // Kafka: optional. Tests inject a stub; production wires the Confluent client when
   // brokers are configured. Without brokers the rail still operates;
   // BRIEFING_MATCHED Kafka publishes are skipped and deep-health surfaces
   // kafka=unavailable.
