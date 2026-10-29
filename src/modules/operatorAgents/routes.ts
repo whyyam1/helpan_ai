@@ -17,6 +17,7 @@ import {
   updateAgentStatusRequestSchema,
   type AgentClass,
   type AgentStatus,
+  AGENT_ID_PATTERN,
 } from './schemas.js';
 import {
   changeAgentStatus,
@@ -47,7 +48,8 @@ const AGENT_ID_PARAMS_SCHEMA = {
   required: ['agent_id'],
   additionalProperties: false,
   properties: {
-    agent_id: { type: 'string', pattern: '^agt_[0-9A-HJKMNP-TV-Z]{26}$' },
+    // Stable names (helpan-klokd-v1, …) and minted agt_<ULID> ids (RECAP §6.20).
+    agent_id: { type: 'string', pattern: AGENT_ID_PATTERN },
   },
 } as const;
 

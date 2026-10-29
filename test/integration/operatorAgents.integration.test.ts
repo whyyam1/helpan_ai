@@ -197,6 +197,33 @@ describe.skipIf(!hasUrl)('/v1/operator/agents (real Postgres)', () => {
     expect((await send({ reason: 'nothing' })).statusCode).toBe(400);
   });
 
+  it('GET + PATCH accept a stable-named agent id (helpan-family-discovery-v1)', async () => {
+    // Stable names are admitted by the seed scripts, not POST (which mints agt_<ULID>).
+    const id = 'helpan-family-discovery-v1';
+    await handle.sql`
+      INSERT INTO agents (id, name, agent_class, owner_app_id)
+      VALUES (${id}, 'Helpan [App Name] (family-discovery)', 'portfolio_app', 'family_discovery')
+    `;
+    const url = `/v1/operator/agents/${id}`;
+
+    const got = await app.inject({ method: 'GET', url, headers: hmacHeaders({ method: 'GET', url }) });
+    expect(got.statusCode).toBe(200);
+    expect(got.json().data.id).toBe(id);
+
+    const raw = JSON.stringify({ name: 'Helpan Nyumbani (family-discovery)' });
+    const patched = await app.inject({
+      method: 'PATCH',
+      url,
+      headers: {
+        ...hmacHeaders({ method: 'PATCH', url, body: raw }),
+        'x-idempotency-key': randomUUID(),
+      },
+      payload: raw,
+    });
+    expect(patched.statusCode).toBe(200);
+    expect(patched.json().data.name).toBe('Helpan Nyumbani (family-discovery)');
+  });
+
   it('non-admin tenant gets 403 AUTH_SCOPE_REQUIRED on POST', async () => {
     const raw = JSON.stringify({
       name: 'denied',

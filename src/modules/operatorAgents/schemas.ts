@@ -14,7 +14,7 @@ export type AgentStatus = (typeof AGENT_STATUS_ENUM)[number];
 // object echoes the stored id, so the strict pattern made `GET
 // /v1/operator/agents/helpan-klokd-v1` fail RESPONSE validation (500) for
 // every stable-named portfolio agent. See authorities/schemas.ts. RECAP §6.20.
-const AGENT_ID_PATTERN = '^[a-zA-Z0-9_-]{1,128}$';
+export const AGENT_ID_PATTERN = '^[a-zA-Z0-9_-]{1,128}$';
 const APP_ID_PATTERN = '^[a-z0-9_]{2,40}$';
 
 export const registerAgentRequestSchema = {

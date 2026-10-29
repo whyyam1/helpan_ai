@@ -7,7 +7,8 @@
 
 const ACCOUNT_UUID_PATTERN =
   '^acc_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$';
-const AGENT_ID_PATTERN = '^agt_[0-9A-HJKMNP-TV-Z]{26}$';
+// Stable names (helpan-klokd-v1, …) and minted agt_<ULID> ids (RECAP §6.20).
+const AGENT_ID_PATTERN = '^[a-zA-Z0-9_-]{1,128}$';
 const ACTOR_TYPE_ENUM = ['user', 'agent', 'operator', 'system'] as const;
 const OUTCOME_ENUM = ['success', 'failure'] as const;
 const TARGET_RAIL_ENUM = ['kipkiren_pay', 'identiti', 'todoku'] as const;
